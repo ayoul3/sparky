@@ -1,0 +1,20 @@
+class Colors:
+    HEADER = "\033[95m"
+    BLUE = "\033[94m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    ENDC = "\033[0m"
+    CYAN = "\033[36m"
+    PURPLE = "\033[35m"
+    WHITE = ""
+    DARKGREY = "\033[1;30m"
+    DARKBLUE = "\033[0;34m"
+
+    def disable(self):
+        self.HEADER = ""
+        self.BLUE = ""
+        self.GREEN = ""
+        self.YELLOW = ""
+        self.RED = ""
+        self.ENDC = ""
