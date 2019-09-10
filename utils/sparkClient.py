@@ -19,7 +19,7 @@ class SparkClient:
         self.requiresAuthentication = False
         self.useShotgun = False
 
-    def initContext(self, authenticate, secret):
+    def initContext(self, secret):
         os.environ["SPARK_LOCAL_IP"] = self.localIP
         conf = SparkConf().setAppName(self.appName)
         conf = conf.setMaster("spark://%s:%d" % (self.target, self.port))
@@ -28,7 +28,7 @@ class SparkClient:
         )
         conf = conf.set("spark.local.ip", self.localIP)
         conf = conf.set("spark.driver.host", self.localIP)
-        if authenticate:
+        if self.requiresAuthentication:
             conf = conf.set("spark.authenticate", "true")
             conf = conf.set("spark.authenticate.secret", secret)
         self.sc = SparkContext(conf=conf)

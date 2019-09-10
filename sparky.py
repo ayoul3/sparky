@@ -62,7 +62,7 @@ def main(results):
         whine("Performing blind command execution on workers", "info")
         sClient.useShotgun = True
     else:
-        sClient.initContext(authentication, results.secret)
+        sClient.initContext(results.secret)
         print("")
 
     if results.listNodes:
@@ -142,7 +142,7 @@ if __name__ == "__main__":
         dest="listNodes",
     )
     group_general.add_argument(
-        "-a",
+        "-A",
         "--appname",
         help="Name of the app as it will appear in the spark logs",
         default="ML exp",
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     group_general.add_argument(
         "-S",
         "--secret",
-        help="Secret to authenticate to Spark master",
+        help="Secret to authenticate to Spark master when authentication is required",
         default="",
         dest="secret",
     )
@@ -172,13 +172,6 @@ if __name__ == "__main__":
         dest="listFiles",
     )
     group_general.add_argument(
-        "-e",
-        "--extension",
-        help="Performs list and search operations on particular extensions of files submitted to a worker: *.txt, *.jar, *.py?. Default: *",
-        default="*",
-        dest="extension",
-    )
-    group_general.add_argument(
         "-k",
         "--search",
         help="Search for patterns in files submited to a worker. Default Patterns hardcoded in utils/searchPass.py",
@@ -187,24 +180,36 @@ if __name__ == "__main__":
         dest="passwdInFile",
     )
 
-    group_cmd.add_argument(
-        "-c", "--cmd", help="Execute a command", default=False, dest="cmd"
+    group_general.add_argument(
+        "-e",
+        "--extension",
+        help="Performs list and search operations on particular extensions of files submitted to a worker: *.txt, *.jar, *.py. Default: *",
+        default="*",
+        dest="extension",
     )
+
     group_cmd.add_argument(
-        "-g",
-        "--shotgun",
-        help="Bypass authentication and execute a command on a worker node",
-        action="store_true",
+        "-c",
+        "--cmd",
+        help="Execute a command on one or multiple worker nodes",
         default=False,
-        dest="shotgun",
+        dest="cmd",
     )
     group_cmd.add_argument(
         "-s",
         "--script",
-        help="Execute a bash script",
+        help="Execute a bash script on one or multiple worker nodes",
         type=lambda x: isValidFile(parser, x),
         default=False,
         dest="script",
+    )
+    group_cmd.add_argument(
+        "-g",
+        "--shotgun",
+        help="Bypass authentication and execute a command on a random worker nodes",
+        action="store_true",
+        default=False,
+        dest="shotgun",
     )
     group_cmd.add_argument(
         "-n",

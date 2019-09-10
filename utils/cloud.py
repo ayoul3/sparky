@@ -36,7 +36,7 @@ def fetchPath(path):
         s = response.read().strip()
         return s.decode("utf-8")
     connection.close()
-    return None
+    return ""
 
 
 def parseData(path, input):
