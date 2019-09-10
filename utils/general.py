@@ -45,11 +45,16 @@ def parseListNodes(sparkSession):
     )
 
     listNodes = sparkSession.listNodes()
-    if listNodes == None or len(listNodes) == 0:
+    if listNodes == None:
         whine("Could not enumerate worker nodes", "err")
         return
     t = PrettyTable(
-        ["Executor IP", "Ephemeral port", "Max caching mem.", "Free caching mem."]
+        [
+            "Executor IP",
+            "Ephemeral port",
+            "Max caching mem. (B)",
+            "Free caching mem. (B)",
+        ]
     )
 
     for i in range(listNodes.size()):

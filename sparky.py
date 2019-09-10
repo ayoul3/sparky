@@ -51,16 +51,16 @@ def main(results):
         whine("Spark master confirmed at {0}:{1}".format(target, port), "good")
 
     whine("Initializing local Spark driver...This can take a little while", "info")
-    if sClient.requiresAuthentication and not (results.secret or results.shotgun):
+    if sClient.requiresAuthentication and not (results.secret or results.blind):
         whine(
-            "Spark is protected with authentication. Either provide a secret (-S) or add --shotgun option when executing a command to bypass authentication",
+            "Spark is protected with authentication. Either provide a secret (-S) or add --blind option when executing a command to bypass authentication",
             "err",
         )
         sys.exit(-1)
 
-    if results.shotgun:
+    if results.blind:
         whine("Performing blind command execution on workers", "info")
-        sClient.useShotgun = True
+        sClient.useBlind = True
     else:
         sClient.initContext(results.secret)
         print("")
@@ -84,7 +84,7 @@ def main(results):
         parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
     if results.cmd:
-        if sClient.useShotgun:
+        if sClient.useBlind:
             blindCommandExec(sClient, base64.b64encode(results.cmd))
         else:
             interpreterArgs = [results.cmd]
@@ -92,7 +92,7 @@ def main(results):
 
     if results.script:
         scriptContent = results.script.read()
-        if sClient.useShotgun:
+        if sClient.useBlind:
             blindCommandExec(sClient, base64.b64encode(scriptContent))
         else:
             interpreterArgs = ["/bin/bash", "-c", scriptContent]
@@ -204,12 +204,12 @@ if __name__ == "__main__":
         dest="script",
     )
     group_cmd.add_argument(
-        "-g",
-        "--shotgun",
-        help="Bypass authentication and execute a command on a random worker nodes",
+        "-b",
+        "--blind",
+        help="Bypass authentication/encryption and blindly execute a command on a random worker nodes",
         action="store_true",
         default=False,
-        dest="shotgun",
+        dest="blind",
     )
     group_cmd.add_argument(
         "-n",

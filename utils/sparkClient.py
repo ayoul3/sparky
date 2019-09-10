@@ -17,7 +17,7 @@ class SparkClient:
         self.version = ""
         self.secret = None
         self.requiresAuthentication = False
-        self.useShotgun = False
+        self.useBlind = False
 
     def initContext(self, secret):
         os.environ["SPARK_LOCAL_IP"] = self.localIP
@@ -31,6 +31,7 @@ class SparkClient:
         if self.requiresAuthentication:
             conf = conf.set("spark.authenticate", "true")
             conf = conf.set("spark.authenticate.secret", secret)
+            conf = conf.set("spark.network.crypto.enabled", "true")
         self.sc = SparkContext(conf=conf)
         self.sc.setLogLevel(self.logLevel)
 
