@@ -1,9 +1,8 @@
 from pyspark import SparkConf, SparkContext
 from general import whine
 import random, time
-import logging
-import subprocess, os, struct, socket
-
+import logging, errno
+import subprocess, os, struct, socket, sys
 
 class SparkClient:
     def __init__(self, target, port, localIP, appName, username):
@@ -17,7 +16,7 @@ class SparkClient:
         self.version = ""
         self.secret = None
         self.requiresAuthentication = False
-        self.useShotgun = False
+        self.useBlind = False
 
     def initContext(self, secret):
         os.environ["SPARK_LOCAL_IP"] = self.localIP
@@ -31,6 +30,7 @@ class SparkClient:
         if self.requiresAuthentication:
             conf = conf.set("spark.authenticate", "true")
             conf = conf.set("spark.authenticate.secret", secret)
+            conf = conf.set("spark.network.crypto.enabled", "true")
         self.sc = SparkContext(conf=conf)
         self.sc.setLogLevel(self.logLevel)
 
@@ -100,6 +100,9 @@ class SparkClient:
             if len(respNone) == 21 and respNone[10] == nonce[10]:
                 return True
 
+        except socket.timeout:
+            whine("Caught a timeout on target %s:%s" %(self.target, self.port), "err")
+            sys.exit(-1)
         except socket.error as serr:
             if serr.errno == errno.ECONNREFUSED:
                 whine(serr, "err")
