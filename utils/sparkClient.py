@@ -1,9 +1,8 @@
 from pyspark import SparkConf, SparkContext
 from general import whine
 import random, time
-import logging
-import subprocess, os, struct, socket
-
+import logging, errno
+import subprocess, os, struct, socket, sys
 
 class SparkClient:
     def __init__(self, target, port, localIP, appName, username):
@@ -101,6 +100,9 @@ class SparkClient:
             if len(respNone) == 21 and respNone[10] == nonce[10]:
                 return True
 
+        except socket.timeout:
+            whine("Caught a timeout on target %s:%s" %(self.target, self.port), "err")
+            sys.exit(-1)
         except socket.error as serr:
             if serr.errno == errno.ECONNREFUSED:
                 whine(serr, "err")
