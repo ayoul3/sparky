@@ -1,6 +1,13 @@
 import argparse
 from utils.sparkClient import SparkClient
-from utils.general import parseListNodes, removeSpaces, whine
+from utils.general import (
+    confirmSpark,
+    parseListNodes,
+    removeSpaces,
+    checkRestPort,
+    checkHTTPPort,
+    whine,
+)
 from utils.cmd import parseCommandOutput, blindCommandExec
 import multiprocessing
 import sys, os, signal, base64
@@ -18,39 +25,16 @@ def _request_stop(signum, _):
     raise SystemExit()
 
 
-def main(results):
-    hostPort = results.spark_master.split(":")
-    localIP = results.driver_ip
-    appName = results.appName
-    username = results.username
-    target = hostPort[0]
-    port = 7077
-    if len(hostPort) > 1:
-        port = int(hostPort[1])
-
-    p = multiprocessing.Pool()
-    sClient = SparkClient(target, port, localIP, appName, username)
-    print("")
-    whine(
-        "Testing target to confirm a spark master is running on {0}:{1}".format(
-            target, port
-        ),
-        "info",
-    )
-    sparkConfirmed = sClient.sendHello()
-    if not sparkConfirmed:
-        whine("Could not confirm the target is running spark", "warn")
-    elif sparkConfirmed and sClient.requiresAuthentication:
+def validateYarnOptions(results):
+    if results.yarn and results.hdfs == "None":
         whine(
-            "Spark master confirmed at {0}:{1} - authentication required".format(
-                target, port
-            ),
-            "warn",
+            "Running in Yarn mode requires an HDFS cluster. Please add the option --hdfs ip:port",
+            "err",
         )
-    else:
-        whine("Spark master confirmed at {0}:{1}".format(target, port), "good")
+        sys.exit(-1)
 
-    whine("Initializing local Spark driver...This can take a little while", "info")
+
+def validateAuthenticationOptions(sClient, results):
     if sClient.requiresAuthentication and not (results.secret or results.blind):
         whine(
             "Spark is protected with authentication. Either provide a secret (-S) or add --blind option when executing a command to bypass authentication",
@@ -58,15 +42,45 @@ def main(results):
         )
         sys.exit(-1)
 
+
+def main(results):
+    hostPort = results.spark_master.split(":")
+    localIP = results.driver_ip
+    appName = results.appName
+    username = results.username
+    target = hostPort[0]
+    port = 8032 if results.yarn else 7077
+    if len(hostPort) > 1:
+        port = int(hostPort[1])
+
+    if results.yarn:
+        validateYarnOptions(results)
+
+    sClient = SparkClient(target, port, localIP, appName, username)
+    sClient.restPort = results.restPort
+    sClient.httpPort = results.httpPort
+    if results.yarn:
+        sClient.yarn = True
+        sClient.hdfs = results.hdfs
+
+    confirmSpark(sClient)
+    validateAuthenticationOptions(sClient, results)
+    whine("Initializing local Spark driver...This can take a little while", "info")
+
+    if results.listNodes:
+        checkRestPort(sClient)
+        gotInfo = checkHTTPPort(sClient)
+        if not gotInfo:
+            sClient.initContext(results.secret)
+            parseListNodes(sClient)
+        sys.exit(0)
+
     if results.blind:
         whine("Performing blind command execution on workers", "info")
         sClient.useBlind = True
-    else:
+    elif sClient.sc is None:
         sClient.initContext(results.secret)
         print("")
-
-    if results.listNodes:
-        parseListNodes(sClient)
 
     if results.listFiles:
         interpreterArgs = [
@@ -186,6 +200,35 @@ if __name__ == "__main__":
         help="Performs list and search operations on particular extensions of files submitted to a worker: *.txt, *.jar, *.py. Default: *",
         default="*",
         dest="extension",
+    )
+    group_general.add_argument(
+        "-y",
+        "--yarn",
+        help="Submits the spark application to a Yarn cluster",
+        action="store_true",
+        default=False,
+        dest="yarn",
+    )
+    group_general.add_argument(
+        "-d",
+        "--hdfs",
+        help="Full address of the HDFS cluster (host:ip)",
+        default="None",
+        dest="hdfs",
+    )
+    group_general.add_argument(
+        "-r",
+        "--rest-port",
+        help="Port of the rest API",
+        default="6066",
+        dest="restPort",
+    )
+    group_general.add_argument(
+        "-t",
+        "--http-port",
+        help="Port of the master HTTP web page",
+        default="8080",
+        dest="httpPort",
     )
 
     group_cmd.add_argument(

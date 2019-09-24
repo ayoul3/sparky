@@ -1,38 +1,64 @@
 from pyspark import SparkConf, SparkContext
 from general import whine
 import random, time
-import logging, errno
+from lxml import html
+import logging, errno, requests, json
 import subprocess, os, struct, socket, sys
+
 
 class SparkClient:
     def __init__(self, target, port, localIP, appName, username):
         self.target = target
         self.port = port
+        self.restPort = 6066
+        self.httpPort = 8080
         self.logLevel = "FATAL"
         self.localIP = localIP
         self.sc = None
         self.appName = appName
         self.username = username
-        self.version = ""
+        self.version = None
         self.secret = None
         self.requiresAuthentication = False
         self.useBlind = False
+        self.yarn = False
+        self.hdfs = None
 
     def initContext(self, secret):
         os.environ["SPARK_LOCAL_IP"] = self.localIP
         conf = SparkConf().setAppName(self.appName)
-        conf = conf.setMaster("spark://%s:%d" % (self.target, self.port))
-        conf = conf.set(
-            "spark.driver.extraJavaOptions", "-Duser.name=%s" % self.username
-        )
         conf = conf.set("spark.local.ip", self.localIP)
         conf = conf.set("spark.driver.host", self.localIP)
         if self.requiresAuthentication:
-            conf = conf.set("spark.authenticate", "true")
-            conf = conf.set("spark.authenticate.secret", secret)
-            conf = conf.set("spark.network.crypto.enabled", "true")
+            conf = self._setupAuthentication(conf, secret)
+        if self.yarn:
+            conf = self._setupYarn(conf)
+        else:
+            conf = conf.setMaster("spark://%s:%d" % (self.target, self.port))
+
+        conf = conf.set(
+            "spark.driver.extraJavaOptions", "-Duser.name=%s" % self.username
+        )
         self.sc = SparkContext(conf=conf)
         self.sc.setLogLevel(self.logLevel)
+
+    def _setupYarn(self, conf):
+        os.environ["HADOOP_USER_NAME"] = "hadoop"
+        os.environ["HADOOP_CONF_DIR"] = "./yarn"
+        conf = conf.setMaster("yarn")
+        conf = conf.set(
+            "spark.hadoop.yarn.resourcemanager.address",
+            "%s:%s" % (self.target, self.port),
+        )
+        conf = conf.set("spark.yarn.stagingDir", "/tmp")
+        conf = conf.set("spark.hadoop.fs.defaultFS", "hdfs://%s" % self.hdfs)
+        return conf
+
+    def _setupAuthentication(self, conf, secret):
+        conf = conf.set("spark.authenticate", "true")
+        conf = conf.set("spark.authenticate.secret", secret)
+        conf = conf.set("spark.network.crypto.enabled", "true")
+        return conf
 
     def isReady(self):
         if self.sc is None:
@@ -72,6 +98,8 @@ class SparkClient:
         return out
 
     def sendHello(self):
+        if self.yarn:
+            return True
         nonce = "\x00\x00\x00\x00\x00\x00\x00\xc5\x03\x62\x05\x32\x92\xe7\xca\x6d\xaa\x00\x00\x00\xb0"
         hello = (
             "\x01\x00\x0c\x31\x39\x32\x2e\x31\x36\x38\x2e\x31\x2e\x32\x31\x00"
@@ -101,7 +129,7 @@ class SparkClient:
                 return True
 
         except socket.timeout:
-            whine("Caught a timeout on target %s:%s" %(self.target, self.port), "err")
+            whine("Caught a timeout on target %s:%s" % (self.target, self.port), "err")
             sys.exit(-1)
         except socket.error as serr:
             if serr.errno == errno.ECONNREFUSED:
@@ -109,6 +137,45 @@ class SparkClient:
                 sys.exit(-1)
             whine(serr, "warn")
             return False
+
+    def sendRestHello(self):
+        try:
+            rp = requests.get(
+                "http://%s:%s/v1/submissions/status/1" % (self.target, self.restPort),
+                timeout=3,
+            )
+            jsonData = json.loads(rp.text)
+            return jsonData
+        except (requests.exceptions.Timeout, requests.exceptions.RequestException):
+            whine(
+                "No Rest API available at %s:%s" % (self.target, self.restPort), "warn"
+            )
+            return None
+        except Exception as err:
+            whine(
+                "Error connecting to REST API at %s:%s - %s"
+                % (self.target, self.restPort, err),
+                "err",
+            )
+            return None
+
+    def sendHTTPHello(self):
+        try:
+            rp = requests.get("http://%s:%s" % (self.target, self.httpPort), timeout=3)
+            doc = html.fromstring(rp.text)
+            return doc
+        except (requests.exceptions.Timeout, requests.exceptions.RequestException):
+            whine(
+                "No Web page available at %s:%s" % (self.target, self.httpPort), "warn"
+            )
+            return None
+        except Exception as err:
+            whine(
+                "Error connecting to Web page at %s:%s - %s"
+                % (self.target, self.httpPort, err),
+                "err",
+            )
+            return None
 
     def sendRawMessage(self, payload):
         payloadSize = struct.pack(">I", len(payload))
