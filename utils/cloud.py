@@ -28,8 +28,8 @@ cloudInfo = {
 
 
 def fetchPath(path):
-    connection = httplib.HTTPConnection("192.168.1.25", 8080, timeout=2)
-    # connection = httplib.HTTPConnection("169.254.169.254", 80, timeout=2)
+    #connection = httplib.HTTPConnection("192.168.1.25", 8080, timeout=2)
+    connection = httplib.HTTPConnection("169.254.169.254", 80, timeout=2)
     connection.request("GET", path)
     response = connection.getresponse()
     if response.status == 200:

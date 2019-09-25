@@ -25,6 +25,7 @@ class SparkClient:
         self.hdfs = None
 
     def initContext(self, secret):
+        whine("Initializing local Spark driver...This can take a little while", "info")
         os.environ["SPARK_LOCAL_IP"] = self.localIP
         conf = SparkConf().setAppName(self.appName)
         conf = conf.set("spark.local.ip", self.localIP)
@@ -57,7 +58,7 @@ class SparkClient:
     def _setupAuthentication(self, conf, secret):
         conf = conf.set("spark.authenticate", "true")
         conf = conf.set("spark.authenticate.secret", secret)
-        conf = conf.set("spark.network.crypto.enabled", "true")
+        #conf = conf.set("spark.network.crypto.enabled", "true")
         return conf
 
     def isReady(self):
@@ -68,7 +69,7 @@ class SparkClient:
     def performWork(self):
         if not self.isReady():
             return None
-        count = self.sc.parallelize(xrange(0, 1), 10).filter(lambda x: x + 1).count()
+        self.sc.parallelize(range(0, 1), 10).filter(lambda x: x + 1).count()
 
     def listNodes(self):
         if not self.isReady():
@@ -88,7 +89,7 @@ class SparkClient:
         if not self.isReady():
             return None
         out = []
-        mylist = self.sc.parallelize(xrange(0, numWorkers), numWorkers).map(
+        mylist = self.sc.parallelize(range(0, numWorkers), numWorkers).map(
             lambda x: subprocess.Popen(
                 interpreterArgs, stdout=subprocess.PIPE
             ).stdout.read()

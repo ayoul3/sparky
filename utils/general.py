@@ -57,7 +57,8 @@ def parseListNodes(sparkSession):
             "Free caching mem. (B)",
         ]
     )
-
+    totalWorkers = int(listNodes.size()) - 1
+    whine("Total workers: %d" % totalWorkers, "good")
     for i in range(listNodes.size()):
         singleNode = listNodes.toList().apply(i)
         ip = str(singleNode._1()).split(":")[0]

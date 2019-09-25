@@ -49,6 +49,7 @@ def main(results):
     appName = results.appName
     username = results.username
     target = hostPort[0]
+    binPath = results.binPath
     port = 8032 if results.yarn else 7077
     if len(hostPort) > 1:
         port = int(hostPort[1])
@@ -70,9 +71,6 @@ def main(results):
         checkRestPort(sClient)
         gotInfo = checkHTTPPort(sClient)
         if not gotInfo:
-            whine(
-                "Initializing local Spark driver...This can take a little while", "info"
-            )
             sClient.initContext(results.secret)
             parseListNodes(sClient)
         sys.exit(0)
@@ -81,7 +79,6 @@ def main(results):
         whine("Performing blind command execution on workers", "info")
         sClient.useBlind = True
     elif sClient.sc is None:
-        whine("Initializing local Spark driver...This can take a little while", "info")
         sClient.initContext(results.secret)
         print("")
 
@@ -102,17 +99,17 @@ def main(results):
 
     if results.cmd:
         if sClient.useBlind:
-            blindCommandExec(sClient, base64.b64encode(results.cmd))
+            blindCommandExec(sClient, binPath, base64.b64encode(results.cmd))
         else:
-            interpreterArgs = [results.cmd]
+            interpreterArgs = [binPath, "-c", results.cmd]
             parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
     if results.script:
         scriptContent = results.script.read()
         if sClient.useBlind:
-            blindCommandExec(sClient, base64.b64encode(scriptContent))
+            blindCommandExec(sClient, binPath, base64.b64encode(scriptContent))
         else:
-            interpreterArgs = ["/bin/bash", "-c", scriptContent]
+            interpreterArgs = [binPath, "-c", scriptContent]
             parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
     if results.metadata:
@@ -264,6 +261,13 @@ if __name__ == "__main__":
         help="Number of workers",
         default=1,
         dest="numWokers",
+    )
+    group_cmd.add_argument(
+        "-x",
+        "--runtime",
+        help="Shell binary to execute commands and scripts on workers. Example values: sh, bash, zsh, ksh",
+        default="bash",
+        dest="binPath",
     )
 
     group_cloud.add_argument(
