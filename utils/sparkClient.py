@@ -21,6 +21,7 @@ class SparkClient:
         self.secret = None
         self.requiresAuthentication = False
         self.useBlind = False
+        self.useRest = False
         self.yarn = False
         self.hdfs = None
 
@@ -58,7 +59,7 @@ class SparkClient:
     def _setupAuthentication(self, conf, secret):
         conf = conf.set("spark.authenticate", "true")
         conf = conf.set("spark.authenticate.secret", secret)
-        #conf = conf.set("spark.network.crypto.enabled", "true")
+        # conf = conf.set("spark.network.crypto.enabled", "true")
         return conf
 
     def isReady(self):
@@ -147,6 +148,24 @@ class SparkClient:
             )
             jsonData = json.loads(rp.text)
             return jsonData
+        except (requests.exceptions.Timeout, requests.exceptions.RequestException):
+            whine(
+                "No Rest API available at %s:%s" % (self.target, self.restPort), "warn"
+            )
+            return None
+        except Exception as err:
+            whine(
+                "Error connecting to REST API at %s:%s - %s"
+                % (self.target, self.restPort, err),
+                "err",
+            )
+            return None
+
+    def sendRestPost(self, url, jsonData, headers):
+        try:
+            rp = requests.post(url, timeout=3, headers=headers, json=jsonData)
+            jsonResp = json.loads(rp.text)
+            return jsonResp
         except (requests.exceptions.Timeout, requests.exceptions.RequestException):
             whine(
                 "No Rest API available at %s:%s" % (self.target, self.restPort), "warn"

