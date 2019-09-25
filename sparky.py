@@ -65,12 +65,14 @@ def main(results):
 
     confirmSpark(sClient)
     validateAuthenticationOptions(sClient, results)
-    whine("Initializing local Spark driver...This can take a little while", "info")
 
     if results.listNodes:
         checkRestPort(sClient)
         gotInfo = checkHTTPPort(sClient)
         if not gotInfo:
+            whine(
+                "Initializing local Spark driver...This can take a little while", "info"
+            )
             sClient.initContext(results.secret)
             parseListNodes(sClient)
         sys.exit(0)
@@ -79,6 +81,7 @@ def main(results):
         whine("Performing blind command execution on workers", "info")
         sClient.useBlind = True
     elif sClient.sc is None:
+        whine("Initializing local Spark driver...This can take a little while", "info")
         sClient.initContext(results.secret)
         print("")
 

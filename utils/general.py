@@ -136,7 +136,7 @@ def getListWorks(doc):
     )
     raw_list = doc.xpath('//div[contains(@class, "aggregated-workers")]/table//tr')
     if len(raw_list) < 1:
-        return []
+        return workerList
     for raw_tr in raw_list:
         try:
             host = raw_tr.xpath("./td[2]/text()")[0].split(":")[0]
@@ -148,6 +148,28 @@ def getListWorks(doc):
         except:
             continue
     return workerList
+
+
+def getListApps(doc):
+    appList = PrettyTable(["App ID", "Name", "User", "State", "Duration"])
+    activeApps = doc.xpath('//div[contains(@class, "aggregated-activeApps")]/table//tr')
+    completedApps = doc.xpath(
+        '//div[contains(@class, "aggregated-completedApps")]/table//tr'
+    )
+    allApps = activeApps + completedApps
+    if len(allApps) < 1:
+        return appList
+    for raw_tr in allApps:
+        try:
+            appID = raw_tr.xpath("./td[1]/a/text()")[0]
+            name = raw_tr.xpath("./td[2]/text()")[0]
+            user = raw_tr.xpath("./td[6]/text()")[0]
+            state = raw_tr.xpath("./td[7]/text()")[0]
+            duration = raw_tr.xpath("./td[8]/text()")[0]
+            appList.add_row([appID, name.strip(), user, state, duration])
+        except:
+            continue
+    return appList
 
 
 def extractClusterInfo(doc, version=None):
@@ -174,6 +196,7 @@ def checkHTTPPort(sClient):
         return False
     clusterInfo = extractClusterInfo(doc, sClient.version)
     listWorkers = getListWorks(doc)
+    listApps = getListApps(doc)
     whine(
         "Master Web page status available at %s:%s"
         % (sClient.target, sClient.httpPort),
@@ -184,5 +207,10 @@ def checkHTTPPort(sClient):
     if listWorkers.rowcount > 0:
         whine("List of workers:", "info", 1)
         print(listWorkers.get_string())
+    else:
+        whine("No active workers detected", "warn", 1)
+    if listApps.rowcount > 0:
+        whine("List of apps:", "info", 1)
+        print(listApps.get_string())
 
     return True
