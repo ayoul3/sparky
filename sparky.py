@@ -11,6 +11,7 @@ from utils.general import (
 from utils.cmd import parseCommandOutput, blindCommandExec, restCommandExec
 import multiprocessing
 import sys, os, signal, base64
+from utils.logo import logo
 
 
 def isValidFile(parser, arg):
@@ -142,13 +143,18 @@ def main(results):
         parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
 
+class MyParser(argparse.ArgumentParser):
+    def error(self, message):
+        logo()
+        self.print_help()
+        sys.exit(2)
+
+
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, _request_stop)
     signal.signal(signal.SIGTERM, _request_stop)
 
-    parser = argparse.ArgumentParser(
-        description="Sparky: a tool to pentest Spark clusters"
-    )
+    parser = MyParser(description="Sparky: a tool to pentest Spark clusters")
     parser.add_argument(
         "spark_master",
         help="The master node of a Spark cluster host:port. If no port is provided, default to 7077",
@@ -246,6 +252,14 @@ if __name__ == "__main__":
         default="8080",
         dest="httpPort",
     )
+    group_general.add_argument(
+        "-q",
+        "--quiet",
+        help="Hide the ascii art",
+        action="store_true",
+        default=False,
+        dest="quietMode",
+    )
 
     ## Command options ##
     ###################
@@ -322,6 +336,8 @@ if __name__ == "__main__":
         default=False,
         dest="privatekey",
     )
-
     results = parser.parse_args()
+    if not results.quietMode:
+        logo()
+
     main(results)
