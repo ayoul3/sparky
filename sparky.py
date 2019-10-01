@@ -212,7 +212,7 @@ if __name__ == "__main__":
     group_general.add_argument(
         "-l",
         "--list",
-        help="test for REST API, HTTP interface, list executor nodes, version, applications if possible",
+        help="Check REST API, HTTP interface, list executor nodes, version, applications if possible",
         action="store_true",
         default=False,
         dest="listNodes",
@@ -234,7 +234,7 @@ if __name__ == "__main__":
     group_general.add_argument(
         "-S",
         "--secret",
-        help="Secret to authenticate to Spark master when authentication is required",
+        help="Secret to authenticate to Spark master when SASL authentication is required",
         default="",
         dest="secret",
     )
@@ -249,7 +249,7 @@ if __name__ == "__main__":
     group_general.add_argument(
         "-f",
         "--list-files",
-        help="List of files (jars, py, etc.) submited to a worker - may contain sensitive information",
+        help="Gather list of files (jars, py, etc.) submitted to a worker - usually contains sensitive information",
         action="store_true",
         default=False,
         dest="listFiles",
@@ -257,7 +257,7 @@ if __name__ == "__main__":
     group_general.add_argument(
         "-k",
         "--search",
-        help="Search for patterns in files submited to a worker. Default Patterns hardcoded in utils/searchPass.py",
+        help="Search for patterns in files submitted to a worker. Default Patterns hardcoded in utils/searchPass.py",
         action="store_true",
         default=False,
         dest="passwdInFile",
@@ -288,21 +288,21 @@ if __name__ == "__main__":
     group_general.add_argument(
         "-r",
         "--rest-port",
-        help="Port of the rest API",
+        help="Use this port to contact the REST API (default: 6066)",
         default="6066",
         dest="restPort",
     )
     group_general.add_argument(
         "-t",
         "--http-port",
-        help="Port of the master HTTP web page",
+        help="Use this port to contact the HTTP master web page (default: 8088)",
         default="8080",
         dest="httpPort",
     )
     group_general.add_argument(
         "-q",
         "--quiet",
-        help="Hide the ascii art",
+        help="Hide the cool ascii art",
         action="store_true",
         default=False,
         dest="quietMode",
@@ -328,7 +328,7 @@ if __name__ == "__main__":
     group_cmd.add_argument(
         "-b",
         "--blind",
-        help="Bypass authentication/encryption and blindly execute a command on a random worker nodes",
+        help="Bypass authentication/encryption and blindly execute a command on a random worker node",
         action="store_true",
         default=False,
         dest="blind",
@@ -336,7 +336,7 @@ if __name__ == "__main__":
     group_cmd.add_argument(
         "-m",
         "--max-memory",
-        help='Maximum Heap memory allocated to drive to make it crash and execute code. Usually varies between 1 and 10 (MB) Use with "-b" option',
+        help='Maximum Heap memory allowed for the worker to make it crash and execute code. Usually varies between 1 and 10 (MB) Use with "-b" option. Default: 2',
         default="2",
         dest="maxMem",
     )
@@ -344,7 +344,7 @@ if __name__ == "__main__":
         "-n",
         "--num-workers",
         type=int,
-        help="Number of workers",
+        help="Number of workers to execute a command/search on. Default: 1",
         default=1,
         dest="numWokers",
     )
@@ -352,14 +352,14 @@ if __name__ == "__main__":
         "-w",
         "--rest-exec",
         nargs="?",
-        help="Execute a system command or bash on a random worker using OnOutOfMemoryError trick. However, you can provide a legitimate jar file to execute. format: FULL_JAR_URL::MAIN_Class",
+        help="if empty, execute a system command (-c or -s) on a random worker using OnOutOfMemoryError trick. You can provide a legitimate jar file to execute instead. Format: FULL_JAR_URL::MAIN_Class",
         const="spark://%s:%s",
         dest="restJarURL",
     )
     group_cmd.add_argument(
         "-x",
         "--runtime",
-        help="Shell binary to execute commands and scripts on workers. Example values: sh, bash, zsh, ksh",
+        help="Shell binary to execute commands and scripts on workers. Default:bash. Examples : sh, bash, zsh, ksh",
         default="bash",
         dest="binPath",
     )
