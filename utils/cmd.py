@@ -1,6 +1,7 @@
 from utils.general import whine
 from prettytable import PrettyTable
-import struct, sys
+import struct, sys, subprocess, base64
+import distutils.spawn
 
 
 def parseCommandOutput(sClient, interpreterArgs, numWorkers):
@@ -46,7 +47,6 @@ def restCommandExec(sClient, binPath, cmdFormatted, restJarURL):
         sClient.target,
         sClient.restPort,
     )
-    print(payload)
     url = "http://%s:%s/v1/submissions/create" % (sClient.target, sClient.restPort)
     resp = sClient.sendRestPost(url, payload, headers)
 
@@ -55,6 +55,37 @@ def restCommandExec(sClient, binPath, cmdFormatted, restJarURL):
     else:
         whine("Something went wrong", "err")
         sys.exit(-1)
+
+
+def _runLocalCMD(cmd):
+    proc = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
+    )
+    stdout, stderr = proc.communicate()
+    return proc.returncode, stdout, stderr
+
+
+def scalaCommandExec(sClient, cmdFormatted, numWorkers):
+    if distutils.spawn.find_executable("java") is None:
+        whine("Could not find java binary in current PATH", "err")
+        sys.exit(-1)
+
+    sparkSubmit, sparkArgs = sClient.getAll()
+    jarArgs = " --class SimpleApp ./res/SimpleApp.jar %s %s" % (
+        cmdFormatted,
+        numWorkers,
+    )
+
+    cmdLine = "%s %s %s " % (sparkSubmit, sparkArgs, jarArgs)
+    whine("Initializing local Spark driver...This can take a little while", "info")
+    code, out, err = _runLocalCMD(cmdLine)
+    if code == 0:
+        whine("Command output\n", "good")
+        print(out)
+    else:
+        whine("Error submitting JAR file or executing code", "err")
+        print(err)
+    sys.exit()
 
 
 def blindCommandExec(sClient, binPath, cmdFormatted):

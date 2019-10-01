@@ -8,7 +8,12 @@ from utils.general import (
     checkHTTPPort,
     whine,
 )
-from utils.cmd import parseCommandOutput, blindCommandExec, restCommandExec
+from utils.cmd import (
+    parseCommandOutput,
+    blindCommandExec,
+    restCommandExec,
+    scalaCommandExec,
+)
 import multiprocessing
 import sys, os, signal, base64
 from utils.logo import logo
@@ -35,15 +40,6 @@ def validateYarnOptions(results):
         sys.exit(-1)
 
 
-def validateAuthenticationOptions(sClient, results):
-    if sClient.requiresAuthentication and not (results.secret or results.blind):
-        whine(
-            "Spark is protected with authentication. Either provide a secret (-S) or add --blind option when executing a command to bypass authentication",
-            "err",
-        )
-        sys.exit(-1)
-
-
 def main(results):
     hostPort = results.spark_master.split(":")
     localIP = results.driver_ip
@@ -52,6 +48,9 @@ def main(results):
     target = hostPort[0]
     binPath = results.binPath
     restJarURL = results.restJarURL
+    useScala = results.useScala
+    useRest = False
+    useBlind = False
     port = 8032 if results.yarn else 7077
     if len(hostPort) > 1:
         port = int(hostPort[1])
@@ -67,7 +66,7 @@ def main(results):
         sClient.hdfs = results.hdfs
 
     if not results.restJarURL is None:
-        sClient.useRest = True
+        useRest = True
         if not results.cmd and not results.script:
             whine(
                 "Please provide a command (-c) or script (-s) to execute via REST",
@@ -76,21 +75,21 @@ def main(results):
             sys.exit(-1)
 
     confirmSpark(sClient)
-    validateAuthenticationOptions(sClient, results)
+    sClient.prepareConf(results.secret)
 
     if results.listNodes:
         checkRestPort(sClient)
         gotInfo = checkHTTPPort(sClient)
         if not gotInfo:
-            sClient.initContext(results.secret)
+            sClient.initContext()
             parseListNodes(sClient)
         sys.exit(0)
 
     if results.blind:
         whine("Performing blind command execution on workers", "info")
-        sClient.useBlind = True
-    elif sClient.sc is None and not sClient.useRest:
-        sClient.initContext(results.secret)
+        useBlind = True
+    elif sClient.sc is None and not useRest and not useScala:
+        sClient.initContext()
         print("")
 
     if results.listFiles:
@@ -109,20 +108,26 @@ def main(results):
         parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
     if results.cmd:
-        if sClient.useBlind:
+        if useBlind:
             blindCommandExec(sClient, binPath, base64.b64encode(results.cmd))
-        elif sClient.useRest:
+        elif useRest:
             restCommandExec(sClient, binPath, base64.b64encode(results.cmd), restJarURL)
+        elif useScala:
+            hydratedCMD = "rm *.jar 2> /dev/null; %s" % results.cmd
+            scalaCommandExec(sClient, base64.b64encode(hydratedCMD), results.numWokers)
         else:
             interpreterArgs = [binPath, "-c", results.cmd]
             parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
     if results.script:
         scriptContent = results.script.read()
-        if sClient.useBlind:
+        if useBlind:
             blindCommandExec(sClient, binPath, base64.b64encode(scriptContent))
-        elif sClient.useRest:
+        elif useRest:
             restCommandExec(sClient, binPath, base64.b64encode(scriptContent))
+        elif useScala:
+            hydratedCMD = "rm *.jar 2> /dev/null;%s" % scriptContent
+            scalaCommandExec(sClient, base64.b64encode(hydratedCMD), results.numWokers)
         else:
             interpreterArgs = [binPath, "-c", scriptContent]
             parseCommandOutput(sClient, interpreterArgs, results.numWokers)
@@ -308,6 +313,13 @@ if __name__ == "__main__":
         help="Shell binary to execute commands and scripts on workers. Example values: sh, bash, zsh, ksh",
         default="bash",
         dest="binPath",
+    )
+    group_cmd.add_argument(
+        "-a",
+        "--scala",
+        help="Submit a pure Scala JAR file instead of a Python wrapped Jar file.",
+        action="store_true",
+        dest="useScala",
     )
 
     ## Cloud options ##

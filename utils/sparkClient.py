@@ -1,4 +1,4 @@
-from pyspark import SparkConf, SparkContext
+import pyspark
 from general import whine
 import random, time
 from lxml import html
@@ -18,17 +18,15 @@ class SparkClient:
         self.appName = appName
         self.username = username
         self.version = None
-        self.secret = None
+        self.secret = ""
         self.requiresAuthentication = False
-        self.useBlind = False
-        self.useRest = False
         self.yarn = False
         self.hdfs = None
+        self.conf = None
 
-    def initContext(self, secret):
-        whine("Initializing local Spark driver...This can take a little while", "info")
+    def prepareConf(self, secret):
         os.environ["SPARK_LOCAL_IP"] = self.localIP
-        conf = SparkConf().setAppName(self.appName)
+        conf = pyspark.SparkConf().setAppName(self.appName)
         conf = conf.set("spark.local.ip", self.localIP)
         conf = conf.set("spark.driver.host", self.localIP)
         if self.requiresAuthentication:
@@ -41,8 +39,7 @@ class SparkClient:
         conf = conf.set(
             "spark.driver.extraJavaOptions", "-Duser.name=%s" % self.username
         )
-        self.sc = SparkContext(conf=conf)
-        self.sc.setLogLevel(self.logLevel)
+        self.conf = conf
 
     def _setupYarn(self, conf):
         os.environ["HADOOP_USER_NAME"] = "hadoop"
@@ -57,10 +54,31 @@ class SparkClient:
         return conf
 
     def _setupAuthentication(self, conf, secret):
+        self.secret = secret
         conf = conf.set("spark.authenticate", "true")
         conf = conf.set("spark.authenticate.secret", secret)
-        # conf = conf.set("spark.network.crypto.enabled", "true")
         return conf
+
+    def _check_authentication(self):
+        print(self.secret)
+        if self.requiresAuthentication and not len(self.secret):
+            return False
+        return True
+
+    def initContext(self):
+        whine("Initializing local Spark driver...This can take a little while", "info")
+        if self.conf is None:
+            whine("Could not load Spark conf")
+            sys.exit(-1)
+        if not self._check_authentication():
+            whine(
+                "Spark is protected with authentication. Either provide a secret (-S) or add --blind option when executing a command to bypass authentication",
+                "err",
+            )
+            sys.exit(-1)
+
+        self.sc = pyspark.SparkContext(conf=self.conf)
+        self.sc.setLogLevel(self.logLevel)
 
     def isReady(self):
         if self.sc is None:
@@ -78,13 +96,18 @@ class SparkClient:
         self.performWork()
         return self.sc._jsc.sc().getExecutorMemoryStatus()
 
-    def getVersion(self):
-        try:
-            self.version = str(self.sc.version)
-            return True
-        except Exception as e:
-            whine("Could not get Spark version - %s " % e, "err")
-            return False
+    def getAll(self):
+        pysparkPath = pyspark.__path__[0]
+        sparkSubmit = "%s/bin/spark-submit" % pysparkPath
+        if self.yarn:
+            sparkArgs = " --master yarn"
+        else:
+            sparkArgs = " --master spark://%s:%s" % (self.target, self.port)
+
+        for tupleItems in self.conf.getAll():
+            sparkArgs += ' --conf "%s=%s"' % (tupleItems[0], tupleItems[1])
+
+        return sparkSubmit, sparkArgs
 
     def executeCMD(self, interpreterArgs, numWorkers=1):
         if not self.isReady():
