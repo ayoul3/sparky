@@ -1,6 +1,6 @@
 from prettytable import PrettyTable
 import re
-from .colors import Colors
+from utils.colors import Colors
 from lxml import html
 import socket
 import os, sys, re

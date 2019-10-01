@@ -1,5 +1,5 @@
 import pyspark
-from general import whine
+from utils.general import whine
 import random, time
 from lxml import html
 import logging, errno, requests, json
@@ -24,8 +24,9 @@ class SparkClient:
         self.hdfs = None
         self.conf = None
 
-    def prepareConf(self, secret):
+    def prepareConf(self, secret, pyBinary):
         os.environ["SPARK_LOCAL_IP"] = self.localIP
+        os.environ["PYSPARK_PYTHON"] = pyBinary
         conf = pyspark.SparkConf().setAppName(self.appName)
         conf = conf.set("spark.local.ip", self.localIP)
         conf = conf.set("spark.driver.host", self.localIP)
@@ -60,7 +61,6 @@ class SparkClient:
         return conf
 
     def _check_authentication(self):
-        print(self.secret)
         if self.requiresAuthentication and not len(self.secret):
             return False
         return True
@@ -87,12 +87,20 @@ class SparkClient:
 
     def performWork(self):
         if not self.isReady():
-            return None
+            whine(
+                "Pyspark driver is not initialized. Remove conflicting options (e.g -a)",
+                "err",
+            )
+            sys.exit()
         self.sc.parallelize(range(0, 1), 10).filter(lambda x: x + 1).count()
 
     def listNodes(self):
         if not self.isReady():
-            return None
+            whine(
+                "Pyspark driver is not initialized. Remove conflicting options (e.g -a)",
+                "err",
+            )
+            sys.exit()
         self.performWork()
         return self.sc._jsc.sc().getExecutorMemoryStatus()
 
@@ -125,19 +133,19 @@ class SparkClient:
     def sendHello(self):
         if self.yarn:
             return True
-        nonce = "\x00\x00\x00\x00\x00\x00\x00\xc5\x03\x62\x05\x32\x92\xe7\xca\x6d\xaa\x00\x00\x00\xb0"
+        nonce = b"\x00\x00\x00\x00\x00\x00\x00\xc5\x03\x62\x05\x32\x92\xe7\xca\x6d\xaa\x00\x00\x00\xb0"
         hello = (
-            "\x01\x00\x0c\x31\x39\x32\x2e\x31\x36\x38\x2e\x31\x2e\x32\x31\x00"
-            "\x00\xe7\x44\x01\x00\x0c\x31\x39\x32\x2e\x31\x36\x38\x2e\x31\x2e"
-            "\x32\x38\x00\x00\x1b\xa5\x00\x11\x65\x6e\x64\x70\x6f\x69\x6e\x74"
-            "\x2d\x76\x65\x72\x69\x66\x69\x65\x72\xac\xed\x00\x05\x73\x72\x00"
-            "\x3d\x6f\x72\x67\x2e\x61\x70\x61\x63\x68\x65\x2e\x73\x70\x61\x72"
-            "\x6b\x2e\x72\x70\x63\x2e\x6e\x65\x74\x74\x79\x2e\x52\x70\x63\x45"
-            "\x6e\x64\x70\x6f\x69\x6e\x74\x56\x65\x72\x69\x66\x69\x65\x72\x24"
-            "\x43\x68\x65\x63\x6b\x45\x78\x69\x73\x74\x65\x6e\x63\x65\x6c\x19"
-            "\x1e\xae\x8e\x40\xc0\x1f\x02\x00\x01\x4c\x00\x04\x6e\x61\x6d\x65"
-            "\x74\x00\x12\x4c\x6a\x61\x76\x61\x2f\x6c\x61\x6e\x67\x2f\x53\x74"
-            "\x72\x69\x6e\x67\x3b\x78\x70\x74\x00\x06\x4d\x61\x73\x74\x65\x72"
+            b"\x01\x00\x0c\x31\x39\x32\x2e\x31\x36\x38\x2e\x31\x2e\x32\x31\x00"
+            b"\x00\xe7\x44\x01\x00\x0c\x31\x39\x32\x2e\x31\x36\x38\x2e\x31\x2e"
+            b"\x32\x38\x00\x00\x1b\xa5\x00\x11\x65\x6e\x64\x70\x6f\x69\x6e\x74"
+            b"\x2d\x76\x65\x72\x69\x66\x69\x65\x72\xac\xed\x00\x05\x73\x72\x00"
+            b"\x3d\x6f\x72\x67\x2e\x61\x70\x61\x63\x68\x65\x2e\x73\x70\x61\x72"
+            b"\x6b\x2e\x72\x70\x63\x2e\x6e\x65\x74\x74\x79\x2e\x52\x70\x63\x45"
+            b"\x6e\x64\x70\x6f\x69\x6e\x74\x56\x65\x72\x69\x66\x69\x65\x72\x24"
+            b"\x43\x68\x65\x63\x6b\x45\x78\x69\x73\x74\x65\x6e\x63\x65\x6c\x19"
+            b"\x1e\xae\x8e\x40\xc0\x1f\x02\x00\x01\x4c\x00\x04\x6e\x61\x6d\x65"
+            b"\x74\x00\x12\x4c\x6a\x61\x76\x61\x2f\x6c\x61\x6e\x67\x2f\x53\x74"
+            b"\x72\x69\x6e\x67\x3b\x78\x70\x74\x00\x06\x4d\x61\x73\x74\x65\x72"
         )
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -148,7 +156,7 @@ class SparkClient:
             sock.send(hello)
             respNone = sock.recv(21)
             respNone2 = sock.recv(200)
-            if "Expected SaslMessage" in respNone2:
+            if "Expected SaslMessage" in respNone2.decode("utf-8", "ignore"):
                 self.requiresAuthentication = True
             if len(respNone) == 21 and respNone[10] == nonce[10]:
                 return True
@@ -223,7 +231,7 @@ class SparkClient:
     def sendRawMessage(self, payload):
         payloadSize = struct.pack(">I", len(payload))
         payloadSize13 = struct.pack(">I", len(payload) + 13)
-        nonce = "\x00\x00\x00\x00" + payloadSize13 + "\x09" + payloadSize
+        nonce = b"\x00\x00\x00\x00" + payloadSize13 + b"\x09" + payloadSize
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_address = (self.target, self.port)
         sock.settimeout(3)
@@ -232,7 +240,7 @@ class SparkClient:
         sock.send(payload)
         respNone = sock.recv(13)
         respNone = sock.recv(2048)
-        if "RegisteredApplication" in respNone:
+        if "RegisteredApplication" in respNone.decode("utf-8", "ignore"):
             time.sleep(2)
             return True
         return False

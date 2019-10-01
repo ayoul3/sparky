@@ -154,7 +154,6 @@ if __name__ == "__main__":
         compiledPatterns[key] = re.compile(listPatterns[key])
 
     path = "{0}/../../".format(os.getcwd())
-    # path = "{0}/SimpleApp/".format(os.getcwd())
     for root, dir, files in os.walk(path):
         for file in files:
             if extension == "*" or extension in file:
