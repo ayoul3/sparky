@@ -14,6 +14,7 @@ from utils.cmd import (
     restCommandExec,
     scalaCommandExec,
 )
+from utils.auth import isSecretSaslValid
 import multiprocessing
 import sys, os, signal, base64
 from utils.logo import logo
@@ -88,6 +89,15 @@ def main(results):
         displayWarningPy()
 
     sClient.prepareConf(results.secret, results.pyBinary)
+    if len(results.secret) > 0:
+        validSecret = isSecretSaslValid(sClient, results.secret)
+        if validSecret:
+            whine("Sucessfull authentication on Spark master", "good")
+        elif validSecret is None:
+            whine("Could not reliably validate the secret provided", "warn")
+        else:
+            whine("Failed authentication using the secret provided", "err")
+            sys.exit(-1)
 
     if results.listNodes:
         checkRestPort(sClient)
