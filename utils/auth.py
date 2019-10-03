@@ -4,15 +4,6 @@ import struct, socket
 from utils.general import whine
 
 
-def hexdigest(input):
-    return input.hex()
-
-
-def digest(input):
-    hash = hashlib.md5(input).digest()
-    return hash
-
-
 def randomBytes(stringLength=10):
     letters = string.ascii_lowercase
     return "".join([random.choice(letters) for i in range(stringLength)]).encode()
@@ -25,15 +16,21 @@ def getSASLHash(nonce, realm, secret, username, digestURI="null/default"):
     realmBytes = realm.encode()
     nonceBytes = nonce.encode("utf-8")
 
-    A1 = (
-        digest(b64Username + b":" + realmBytes + b":" + b64Secret)
-        + b":"
-        + nonceBytes
-        + b":"
-        + cnonce
-    )
-    HHA1 = hexdigest(digest(A1))
-    HHA2 = hexdigest(digest(b"AUTHENTICATE:" + digestURI.encode()))
+    FirstHalfA1_hash = hashlib.md5()
+    FirstHalfA1_hash.update(b64Username + b":" + realmBytes + b":" + b64Secret)
+
+    A1_hash = hashlib.md5()
+    A1_hash.update(FirstHalfA1_hash.digest())
+    A1_hash.update(b":" + nonceBytes + b":" + cnonce)
+    HHA1 = A1_hash.hexdigest()
+
+    A2_hash = hashlib.md5()
+    A2_hash.update(b"AUTHENTICATE:")
+    A2_hash.update(digestURI.encode())
+
+    HHA2 = A2_hash.hexdigest()
+    resp_hash = hashlib.md5()
+
     message = (
         HHA1.encode()
         + b":"
@@ -43,7 +40,8 @@ def getSASLHash(nonce, realm, secret, username, digestURI="null/default"):
         + b":auth:"
         + HHA2.encode()
     )
-    challengeResp = hexdigest(digest(message))
+    resp_hash.update(message)
+    challengeResp = resp_hash.hexdigest()
 
     fullResp = 'charset=utf-8,username="{0}",realm="{1}",nonce="{2}",nc=00000001,cnonce="{3}",digest-uri="{4}",maxbuf=65536,response={5},qop=auth'.format(
         b64Username.decode(), realm, nonce, cnonce.decode(), digestURI, challengeResp
@@ -137,3 +135,6 @@ def isSecretSaslValid(sClient, secret, username="sparkSaslUser"):
         if saslException:
             whine(saslException.group(1), "err")
         return False
+
+
+getSASLHash("erezrererz", "erere", "ererer", "erere")
