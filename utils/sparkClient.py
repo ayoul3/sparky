@@ -164,7 +164,7 @@ class SparkClient:
         except socket.timeout:
             whine("Caught a timeout on target %s:%s" % (self.target, self.port), "err")
             sys.exit(-1)
-        except socket.error as serr:
+        except Exception as serr:
             if serr.errno == errno.ECONNREFUSED:
                 whine(serr, "err")
                 sys.exit(-1)
@@ -228,22 +228,30 @@ class SparkClient:
             )
             return None
 
-    def sendRawMessage(self, payload):
-        payloadSize = struct.pack(">I", len(payload))
-        payloadSize13 = struct.pack(">I", len(payload) + 13)
-        nonce = b"\x00\x00\x00\x00" + payloadSize13 + b"\x09" + payloadSize
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_address = (self.target, self.port)
-        sock.settimeout(3)
-        sock.connect(server_address)
-        sock.send(nonce)
-        sock.send(payload)
-        respNone = sock.recv(13)
-        respNone = sock.recv(2048)
-        if "RegisteredApplication" in respNone.decode("utf-8", "ignore"):
-            time.sleep(2)
-            return True
-        return False
+    def sendRawMessage(self, nonce, payload, sock=None, timeout=2):
+        try:
+            if sock is None:
+                server_address = (self.target, self.port)
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(3)
+                sock.connect(server_address)
+            sock.send(nonce)
+            sock.send(payload)
+            respNone = sock.recv(13)
+            time.sleep(0.5)
+            realResp = sock.recv(2048)
+            time.sleep(timeout)
+            return realResp
+        except socket.timeout:
+            whine("Caught a timeout on target %s:%s" % (self.target, self.port), "err")
+            return None
+        except Exception as serr:
+            if serr.errno == errno.ECONNREFUSED:
+                whine(serr, "err")
+                sys.exit(-1)
+            whine(serr, "warn")
+            return None
+        return None
 
     def __del__(self):
         os.environ["SPARK_LOCAL_IP"] = ""
