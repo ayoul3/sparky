@@ -135,6 +135,3 @@ def isSecretSaslValid(sClient, secret, username="sparkSaslUser"):
         if saslException:
             whine(saslException.group(1), "err")
         return False
-
-
-getSASLHash("erezrererz", "erere", "ererer", "erere")
