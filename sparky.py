@@ -7,6 +7,8 @@ from utils.general import (
     checkRestPort,
     checkHTTPPort,
     whine,
+    isValidFile,
+    request_stop,
 )
 from utils.cmd import (
     parseCommandOutput,
@@ -18,18 +20,6 @@ from utils.auth import isSecretSaslValid
 import multiprocessing
 import sys, os, signal, base64
 from utils.logo import logo
-
-
-def isValidFile(parser, arg):
-    if not os.path.exists(arg):
-        parser.error("The file %s does not exist!" % arg)
-    else:
-        return open(arg, "r")  # return an open file handle
-
-
-def _request_stop(signum, _):
-    whine("Shutting down Spark driver", "warn")
-    raise SystemExit()
 
 
 def validateYarnOptions(results):
@@ -201,8 +191,8 @@ class MyParser(argparse.ArgumentParser):
 
 
 if __name__ == "__main__":
-    signal.signal(signal.SIGINT, _request_stop)
-    signal.signal(signal.SIGTERM, _request_stop)
+    signal.signal(signal.SIGINT, request_stop)
+    signal.signal(signal.SIGTERM, request_stop)
 
     parser = MyParser(description="Sparky: a tool to pentest Spark clusters")
     parser.add_argument(

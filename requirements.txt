@@ -2,3 +2,4 @@ requests
 pyspark
 lxml
 prettytable
+gevent

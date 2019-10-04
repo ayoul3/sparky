@@ -9,6 +9,18 @@ import errno
 toHex = lambda x: "".join([hex(ord(c))[2:].zfill(2) for c in x])
 
 
+def isValidFile(parser, arg):
+    if not os.path.exists(arg):
+        parser.error("The file %s does not exist!" % arg)
+    else:
+        return open(arg, "r")  # return an open file handle
+
+
+def request_stop(signum, _):
+    whine("Shutting down Spark driver", "warn")
+    raise SystemExit()
+
+
 def whine(text, kind="clear", level=0):
     """
     Handles screen messages display

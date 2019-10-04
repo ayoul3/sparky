@@ -103,7 +103,7 @@ def sendChallenge(sClient, saslNonce, realm, secret, username, sock):
     return serverResp
 
 
-def isSecretSaslValid(sClient, secret, username="sparkSaslUser"):
+def isSecretSaslValid(sClient, secret, username="sparkSaslUser", quiet=False):
     sock = _setup_socket(sClient)
     rawServerChall = getServerChallenge(sClient, sock)
     if rawServerChall is None:
@@ -124,14 +124,15 @@ def isSecretSaslValid(sClient, secret, username="sparkSaslUser"):
         return None
     serverResp = serverResp.decode("utf-8", "ignore")
     if "rspauth=" in serverResp:
-        return True
+        return secret
     elif "SaslException" in serverResp:
         saslException = re.search(
             "javax\.security\.sasl\.SaslException: ([\w\d -_.,]+)\n",
             serverResp,
             re.IGNORECASE,
         )
-        whine("Got sasl exception from server when submitting challenge", "err")
-        if saslException:
-            whine(saslException.group(1), "err")
+        if not quiet:
+            whine("Got sasl exception from server when submitting challenge", "err")
+            if saslException:
+                whine(saslException.group(1), "err")
         return False

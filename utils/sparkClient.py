@@ -228,7 +228,7 @@ class SparkClient:
             )
             return None
 
-    def sendRawMessage(self, nonce, payload, sock=None, timeout=2):
+    def sendRawMessage(self, nonce, payload, sock=None, wait_time=2):
         try:
             if sock is None:
                 server_address = (self.target, self.port)
@@ -240,7 +240,7 @@ class SparkClient:
             respNone = sock.recv(13)
             time.sleep(0.5)
             realResp = sock.recv(2048)
-            time.sleep(timeout)
+            time.sleep(wait_time)
             return realResp
         except socket.timeout:
             whine("Caught a timeout on target %s:%s" % (self.target, self.port), "err")
