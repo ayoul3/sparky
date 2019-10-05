@@ -65,6 +65,14 @@ class SparkClient:
             return False
         return True
 
+    def _checkPyVersion(self):
+        if sys.version_info[0] > 2 and os.environ["PYSPARK_PYTHON"] == "python":
+            whine(
+                "Spark workers running a different version than Python %s.%s will throw errors. See -P option"
+                % (sys.version_info[0], sys.version_info[1]),
+                "warn",
+            )
+
     def initContext(self):
         whine("Initializing local Spark driver...This can take a little while", "info")
         if self.conf is None:
@@ -76,6 +84,8 @@ class SparkClient:
                 "err",
             )
             sys.exit(-1)
+
+        self._checkPyVersion()
 
         self.sc = pyspark.SparkContext(conf=self.conf)
         self.sc.setLogLevel(self.logLevel)

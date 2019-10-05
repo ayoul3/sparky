@@ -31,14 +31,6 @@ def validateYarnOptions(results):
         sys.exit(-1)
 
 
-def displayWarningPy():
-    whine(
-        "Spark workers running a different version than Python %s.%s will throw errors. See -P option"
-        % (sys.version_info[0], sys.version_info[1]),
-        "warn",
-    )
-
-
 def main(results):
     hostPort = results.spark_master.split(":")
     localIP = results.driver_ip
@@ -75,8 +67,6 @@ def main(results):
             sys.exit(-1)
 
     confirmSpark(sClient)
-    if sys.version_info[0] > 2 and results.pyBinary == "python":
-        displayWarningPy()
 
     sClient.prepareConf(results.secret, results.pyBinary)
     if len(results.secret) > 0:
@@ -89,7 +79,7 @@ def main(results):
             whine("Failed authentication using the secret provided", "err")
             sys.exit(-1)
 
-    if results.listNodes:
+    if results.info:
         checkRestPort(sClient)
         gotInfo = checkHTTPPort(sClient)
         if not gotInfo:
@@ -105,13 +95,10 @@ def main(results):
         print("")
 
     if results.listFiles:
-        interpreterArgs = [
-            "/bin/bash",
-            "-c",
-            'find "$(cd ../..; pwd)" -type f -name "{0}" -printf "%M\t%u\t%g\t%6k KB\t%Tc\t%p\n" |grep -v stderr |grep -v stdout'.format(
-                results.extension
-            ),
-        ]
+        listCMD = 'find "$(cd ../..; pwd)" -type f -name "{0}" -printf "%M\t%u\t%g\t%6k KB\t%Tc\t%p\n" |grep -v stderr |grep -v stdout'.format(
+            results.extension
+        )
+        interpreterArgs = ["/bin/bash", "-c", listCMD]
         parseCommandOutput(sClient, interpreterArgs, results.numWokers)
 
     if results.passwdInFile:
@@ -210,12 +197,12 @@ if __name__ == "__main__":
     ## General options ##
     ###################
     group_general.add_argument(
-        "-l",
-        "--list",
+        "-i",
+        "--info",
         help="Check REST API, HTTP interface, list executor nodes, version, applications if possible",
         action="store_true",
         default=False,
-        dest="listNodes",
+        dest="info",
     )
     group_general.add_argument(
         "-A",
