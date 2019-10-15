@@ -53,6 +53,9 @@ def main(results):
     sClient = SparkClient(target, port, localIP, appName, username)
     sClient.restPort = results.restPort
     sClient.httpPort = results.httpPort
+    sClient.blockManagerPort = results.blockManagerPort
+    sClient.driverPort = results.driverPort
+    
     if results.yarn:
         sClient.yarn = True
         sClient.hdfs = results.hdfs
@@ -141,7 +144,7 @@ def main(results):
             )
         elif useRest:
             restCommandExec(
-                sClient, binPath, base64.b64encode(scriptContent), results.maxMem
+                sClient, binPath, base64.b64encode(scriptContent), restJarURL, results.maxMem
             )
         elif useScala:
             hydratedCMD = "rm *.jar 2> /dev/null;%s" % scriptContent
@@ -231,6 +234,20 @@ if __name__ == "__main__":
         help="Python binary to execute worker commands. Can be full path. Version must match the binary used to execute this tool.",
         default="python",
         dest="pyBinary",
+    )
+    group_general.add_argument(
+        "-D",
+        "--driver-port",
+        help="Port to bind to on the computer to receive communication from worker nodes. Default: 8080",
+        default="8080",
+        dest="driverPort",
+    )
+    group_general.add_argument(
+        "-B",
+        "--blockManager-port",
+        help="Port to bind to on the computer to receive block data from worker nodes. Default: 8443",
+        default="8443",
+        dest="blockManagerPort",
     )
 
     group_general.add_argument(

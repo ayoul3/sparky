@@ -12,7 +12,9 @@ class SparkClient:
         self.port = port
         self.restPort = 6066
         self.httpPort = 8080
-        self.logLevel = "FATAL"
+        self.driverPort = 8080
+        self.blockManagerPort = 8443
+        self.logLevel = "INFO"
         self.localIP = localIP
         self.sc = None
         self.appName = appName
@@ -30,6 +32,8 @@ class SparkClient:
         conf = pyspark.SparkConf().setAppName(self.appName)
         conf = conf.set("spark.local.ip", self.localIP)
         conf = conf.set("spark.driver.host", self.localIP)
+        conf = conf.set("spark.driver.port", self.driverPort)
+        conf = conf.set("spark.blockManager.port", self.blockManagerPort)
         if self.requiresAuthentication:
             conf = self._setupAuthentication(conf, secret)
         if self.yarn:
@@ -73,6 +77,23 @@ class SparkClient:
                 "warn",
             )
 
+    def _is_port_in_use(self, port):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_address = ("127.0.0.1", int(port))
+        ret = sock.connect_ex(server_address)
+        return int(ret) == 0
+
+    def _checkListeningPorts(self):
+        if self._is_port_in_use(self.driverPort) or self._is_port_in_use(
+            self.blockManagerPort
+        ):
+            whine(
+                "Make sure that both the driver port (-D) %s and block manager port (-B) %s are free to bind"
+                % (self.driverPort, self.blockManagerPort),
+                "err",
+            )
+            sys.exit(-1)
+
     def initContext(self):
         whine("Initializing local Spark driver...This can take a little while", "info")
         if self.conf is None:
@@ -86,7 +107,7 @@ class SparkClient:
             sys.exit(-1)
 
         self._checkPyVersion()
-
+        self._checkListeningPorts()
         self.sc = pyspark.SparkContext(conf=self.conf)
         self.sc.setLogLevel(self.logLevel)
 
