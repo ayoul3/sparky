@@ -3,3 +3,6 @@ pyspark
 lxml
 prettytable
 gevent
+mock
+allure-pytest
+pytest

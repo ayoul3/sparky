@@ -93,6 +93,7 @@ def confirmSpark(sClient):
     sparkConfirmed = sClient.sendHello()
     if not sparkConfirmed:
         whine("Could not confirm the target is running spark", "warn")
+        return -1
     elif sparkConfirmed and sClient.requiresAuthentication:
         whine(
             "Spark master confirmed at {0}:{1} - authentication required".format(
@@ -100,11 +101,13 @@ def confirmSpark(sClient):
             ),
             "warn",
         )
+        return 1
     else:
         whine(
             "Spark master confirmed at {0}:{1}".format(sClient.target, sClient.port),
             "good",
         )
+        return 0
 
 
 def removeSpaces(input):
