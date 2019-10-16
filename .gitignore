@@ -3,3 +3,4 @@
 .gitignore
 me_*.py
 me_*.txt
+.*.json
