@@ -32,7 +32,7 @@ class CMDTestCase(unittest.TestCase):
     @mock.patch("requests.post")        
     def test_restCommandExec(self, mock_post):
         with allure.step("When REST command execution works"):
-            mock_post.return_value.text = b'''{
+            mock_post.return_value.text = '''{
                         "action" : "CreateSubmissionResponse",
                         "message" : "Driver successfully submitted as driver-20151008145126-0000",
                         "serverSparkVersion" : "1.5.0",

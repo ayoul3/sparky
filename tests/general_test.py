@@ -43,12 +43,12 @@ class GeneralTestCase(unittest.TestCase):
     @mock.patch("requests.get")
     def test_checkRestPort(self, mock_get):
         with allure.step("When REST API is reachable"):
-            mock_get.return_value.text = b'{"serverSparkVersion":"2.4.3"}'
+            mock_get.return_value.text = '{"serverSparkVersion":"2.4.3"}'
             ret = checkRestPort(self.sClient)
             self.assertTrue(ret == 0, "Should return 0 but returned %s " % ret)
         
         with allure.step("When REST API returns weird results"):
-            mock_get.return_value.text = b'sddsdsdsdsdsd'
+            mock_get.return_value.text = 'sddsdsdsdsdsd'
             ret = checkRestPort(self.sClient)
             self.assertTrue(ret == None, "Should return None but returned %s " % ret)
     

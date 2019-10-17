@@ -111,6 +111,7 @@ def confirmSpark(sClient):
 
 def checkRestPort(sClient):
     jsonData = sClient.sendRestHello()
+    print(jsonData)
     if jsonData is None:
         return None
     sparkVersion = jsonData.get("serverSparkVersion", None)
