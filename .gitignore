@@ -4,3 +4,5 @@
 me_*.py
 me_*.txt
 .*.json
+.vscode/*
+.pytest_cache/*

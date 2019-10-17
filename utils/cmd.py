@@ -37,10 +37,14 @@ def restCommandExec(sClient, binPath, cmdFormatted, restJarURL, maxMem):
             % (maxMem.zfill(2), cmdFormatted, binPath)
         )
     else:
-        fqdnJar = restJarURL.split("::")[0]
-        mainClass = restJarURL.split("::")[1]
-        payload["sparkProperties"]["spark.jars"] = fqdnJar
-        payload["mainClass"] = mainClass
+        try:
+            fqdnJar = restJarURL.split("::")[0]
+            mainClass = restJarURL.split("::")[1]
+            payload["sparkProperties"]["spark.jars"] = fqdnJar
+            payload["mainClass"] = mainClass
+        except Exception as err:
+            whine("Error parsing URL jar file. Please follow instructions in help page. %s" % err, "err")
+            return None
 
     payload["appResource"] = payload["sparkProperties"]["spark.jars"]
     payload["sparkProperties"]["spark.master"] = "spark://%s:%s" % (
@@ -52,6 +56,7 @@ def restCommandExec(sClient, binPath, cmdFormatted, restJarURL, maxMem):
 
     if not resp is None and resp["success"]:
         whine("Command successfully executed on a random worker", "good")
+        return True
     else:
         whine("Something went wrong", "err")
         sys.exit(-1)

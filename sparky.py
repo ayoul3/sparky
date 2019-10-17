@@ -3,7 +3,6 @@ from utils.sparkClient import SparkClient
 from utils.general import (
     confirmSpark,
     parseListNodes,
-    removeSpaces,
     checkRestPort,
     checkHTTPPort,
     whine,

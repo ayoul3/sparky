@@ -7,14 +7,12 @@ from utils.sparkClient import SparkClient
 from utils.general import (
     confirmSpark,
     parseListNodes,
-    removeSpaces,
     checkRestPort,
     checkHTTPPort,
     whine,
     isValidFile,
     request_stop,
 )
-
 
 class GeneralTestCase(unittest.TestCase):
     def setUp(self):
@@ -40,6 +38,33 @@ class GeneralTestCase(unittest.TestCase):
             mock_socket.return_value.recv.return_value = b"erererqerer"
             ret = confirmSpark(self.sClient)
             self.assertTrue(ret == -1, "Should return -1 but returned %s " % ret)
+
+
+    @mock.patch("requests.get")
+    def test_checkRestPort(self, mock_get):
+        with allure.step("When REST API is reachable"):
+            mock_get.return_value.text = b'{"serverSparkVersion":"2.4.3"}'
+            ret = checkRestPort(self.sClient)
+            self.assertTrue(ret == 0, "Should return 0 but returned %s " % ret)
+        
+        with allure.step("When REST API returns weird results"):
+            mock_get.return_value.text = b'sddsdsdsdsdsd'
+            ret = checkRestPort(self.sClient)
+            self.assertTrue(ret == None, "Should return None but returned %s " % ret)
+    
+    @mock.patch("requests.get")
+    def test_checkHTTPPort(self, mock_get):
+        with allure.step("When REST API is reachable"):
+            mock_get.return_value.text = b'<html></html>'
+            ret = checkHTTPPort(self.sClient)
+            self.assertTrue(ret, "Should return True but returned %s " % ret)
+        
+        with allure.step("When REST API returns weird results"):
+            mock_get.return_value.text = None
+            ret = checkHTTPPort(self.sClient)
+            self.assertFalse(ret, "Should return None but returned %s " % ret)
+    
+    
 
 
 if __name__ == "__main__":

@@ -5,6 +5,8 @@ from utils.general import whine
 
 
 def randomBytes(stringLength=10):
+    if os.environ["TEST_FLAG"]:
+        return b"A"*40
     letters = string.ascii_lowercase
     return "".join([random.choice(letters) for i in range(stringLength)]).encode()
 
@@ -116,7 +118,7 @@ def isSecretSaslValid(sClient, secret, username="sparkSaslUser", quiet=False):
             % str(algorithm)
         )
     if saslNonce is None or realm is None:
-        whine("Got Null Nonce (%s) or Realm (%s)" % (str(saslNonce), str(realm)), "err")
+        whine("Got Null SASL Nonce (%s) or Realm (%s)" % (str(saslNonce), str(realm)), "err")
         return None
     serverResp = sendChallenge(sClient, saslNonce, realm, secret, username, sock)
     if serverResp is None:
@@ -127,7 +129,7 @@ def isSecretSaslValid(sClient, secret, username="sparkSaslUser", quiet=False):
         return secret
     elif "SaslException" in serverResp:
         saslException = re.search(
-            "javax\.security\.sasl\.SaslException: ([\w\d -_.,]+)\n",
+            r"javax\.security\.sasl\.SaslException: ([\w\d -_.,]+)\n",
             serverResp,
             re.IGNORECASE,
         )
