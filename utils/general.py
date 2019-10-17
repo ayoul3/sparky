@@ -109,20 +109,15 @@ def confirmSpark(sClient):
         )
         return 0
 
-
-def removeSpaces(input):
-    input = input.replace("\n", ";").replace("\r", "")
-    return str(re.sub("\s+", "${IFS}", input))
-
-
 def checkRestPort(sClient):
     jsonData = sClient.sendRestHello()
     if jsonData is None:
-        return
+        return None
     sparkVersion = jsonData.get("serverSparkVersion", None)
     if not sparkVersion is None:
         whine("Spark version %s detected " % sparkVersion, "good")
     whine("Rest API available at %s:%s" % (sClient.target, sClient.restPort), "good")
+    return 0
 
 
 def getTextFromNode(doc, xpathPattern, regex=None):

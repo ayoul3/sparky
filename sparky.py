@@ -3,7 +3,6 @@ from utils.sparkClient import SparkClient
 from utils.general import (
     confirmSpark,
     parseListNodes,
-    removeSpaces,
     checkRestPort,
     checkHTTPPort,
     whine,
@@ -55,7 +54,7 @@ def main(results):
     sClient.httpPort = results.httpPort
     sClient.blockManagerPort = results.blockManagerPort
     sClient.driverPort = results.driverPort
-    
+
     if results.yarn:
         sClient.yarn = True
         sClient.hdfs = results.hdfs
@@ -144,7 +143,11 @@ def main(results):
             )
         elif useRest:
             restCommandExec(
-                sClient, binPath, base64.b64encode(scriptContent), restJarURL, results.maxMem
+                sClient,
+                binPath,
+                base64.b64encode(scriptContent),
+                restJarURL,
+                results.maxMem,
             )
         elif useScala:
             hydratedCMD = "rm *.jar 2> /dev/null;%s" % scriptContent
