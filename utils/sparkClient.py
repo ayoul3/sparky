@@ -14,7 +14,7 @@ class SparkClient:
         self.httpPort = 8080
         self.driverPort = 8080
         self.blockManagerPort = 8443
-        self.logLevel = "INFO"
+        self.logLevel = "WARN"
         self.localIP = localIP
         self.sc = None
         self.appName = appName

@@ -43,7 +43,11 @@ def restCommandExec(sClient, binPath, cmdFormatted, restJarURL, maxMem):
             payload["sparkProperties"]["spark.jars"] = fqdnJar
             payload["mainClass"] = mainClass
         except Exception as err:
-            whine("Error parsing URL jar file. Please follow instructions in help page. %s" % err, "err")
+            whine(
+                "Error parsing URL jar file. Please follow instructions in help page. %s"
+                % err,
+                "err",
+            )
             return None
 
     payload["appResource"] = payload["sparkProperties"]["spark.jars"]
