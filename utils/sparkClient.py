@@ -269,7 +269,6 @@ class SparkClient:
             sock.send(nonce)
             sock.send(payload)
             respNone = sock.recv(13)
-            time.sleep(0.5)
             realResp = sock.recv(2048)
             time.sleep(wait_time)
             return realResp

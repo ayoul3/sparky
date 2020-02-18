@@ -5,8 +5,8 @@ from utils.general import whine
 
 
 def randomBytes(stringLength=10):
-    if os.environ["TEST_FLAG"]:
-        return b"A"*40
+    if os.environ.get("TEST_FLAG", False):
+        return b"A" * 40
     letters = string.ascii_lowercase
     return "".join([random.choice(letters) for i in range(stringLength)]).encode()
 
@@ -109,16 +109,23 @@ def isSecretSaslValid(sClient, secret, username="sparkSaslUser", quiet=False):
     sock = _setup_socket(sClient)
     rawServerChall = getServerChallenge(sClient, sock)
     if rawServerChall is None:
-        whine("Could not fetch server SASL challenge", "err")
+        # whine(
+        #    "Could not fetch server SASL challenge. Try reducing the number of pools",
+        #    "err",
+        # )
         return None
     saslNonce, realm, algorithm = extractSaslParams(rawServerChall)
     if algorithm != "md5-sess":
-        whine(
-            "Cannot check the secret provided. Received weird algorithm %s "
-            % str(algorithm)
-        )
+        # whine(
+        #    "Cannot check the secret provided. Received weird algorithm %s. Try reducing the number of pools"
+        #    % str(algorithm)
+        # )
+        return None
     if saslNonce is None or realm is None:
-        whine("Got Null SASL Nonce (%s) or Realm (%s)" % (str(saslNonce), str(realm)), "err")
+        # whine(
+        #    "Got Null SASL Nonce (%s) or Realm (%s)" % (str(saslNonce), str(realm)),
+        #    "err",
+        # )
         return None
     serverResp = sendChallenge(sClient, saslNonce, realm, secret, username, sock)
     if serverResp is None:

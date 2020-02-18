@@ -27,19 +27,23 @@ from utils.logo import logoBrute
 def checkResult(validSecret):
     if validSecret:
         whine("Sucessfull authentication on Spark master: %s " % validSecret, "good")
+        print("--- %s seconds ---" % (time.time() - start_time))
         sys.exit(0)
 
 
 def startBruteforce(sClient, pool, wordlist):
     for word in open(wordlist, "r"):
-        pool.apply_async(
-            isSecretSaslValid,
-            args=(sClient, word.strip(), "sparkSaslUser", True),
-            callback=checkResult,
+        pool.add(
+            pool.apply_async(
+                isSecretSaslValid,
+                args=(sClient, word.strip(), "sparkSaslUser", True),
+                callback=checkResult,
+            )
         )
 
-    pool.join()
+    pool.join(timeout=30)
     pool.kill()
+    whine("Could not find the secret", "warn")
 
 
 def main(results):
@@ -100,4 +104,5 @@ if __name__ == "__main__":
     if not results.quietMode:
         logoBrute()
 
+    start_time = time.time()
     main(results)

