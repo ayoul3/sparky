@@ -1,8 +1,9 @@
-*.pyc
-.gitconfig
-.gitignore
-me_*.py
-me_*.txt
-.*.json
-.vscode/*
-.pytest_cache/*
+*
+!*.py
+!utils
+!yarn
+!README.md
+!requirements.txt
+!tests
+!res
+!*.jar
