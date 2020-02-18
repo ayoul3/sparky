@@ -27,10 +27,8 @@ class SparkClient:
         self.conf = None
 
     def prepareConf(self, secret, pyBinary):
-        os.environ["SPARK_LOCAL_IP"] = self.localIP
         os.environ["PYSPARK_PYTHON"] = pyBinary
         conf = pyspark.SparkConf().setAppName(self.appName)
-        conf = conf.set("spark.local.ip", self.localIP)
         conf = conf.set("spark.driver.host", self.localIP)
         conf = conf.set("spark.driver.port", self.driverPort)
         conf = conf.set("spark.blockManager.port", self.blockManagerPort)
@@ -135,17 +133,24 @@ class SparkClient:
         self.performWork()
         return self.sc._jsc.sc().getExecutorMemoryStatus()
 
-    def getAll(self):
+    def getAll(self, jarURL, deployMode):
+
         pysparkPath = pyspark.__path__[0]
         sparkSubmit = "%s/bin/spark-submit" % pysparkPath
         if self.yarn:
             sparkArgs = " --master yarn"
         else:
-            sparkArgs = " --master spark://%s:%s" % (self.target, self.port)
+            sparkArgs = " --master spark://%s:%s --deploy-mode %s" % (
+                self.target,
+                self.port,
+                deployMode,
+            )
 
         for tupleItems in self.conf.getAll():
+            if deployMode == "cluster":
+                if any(x in tupleItems[0] for x in ["driver", "blockManager"]):
+                    continue
             sparkArgs += ' --conf "%s=%s"' % (tupleItems[0], tupleItems[1])
-
         return sparkSubmit, sparkArgs
 
     def executeCMD(self, interpreterArgs, numWorkers=1):
@@ -284,4 +289,4 @@ class SparkClient:
         return None
 
     def __del__(self):
-        os.environ["SPARK_LOCAL_IP"] = ""
+        os.environ["PYSPARK_PYTHON"] = ""

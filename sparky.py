@@ -125,9 +125,10 @@ def main(results):
                 results.maxMem,
             )
         elif useScala:
-            hydratedCMD = "rm *.jar 2> /dev/null; %s" % results.cmd
+            hydratedCMD = "rm -f *.jar 2> /dev/null; %s" % results.cmd
             scalaCommandExec(
                 sClient,
+                results.jarURL,
                 base64.b64encode(hydratedCMD.encode("utf-8")),
                 results.numWokers,
             )
@@ -150,10 +151,11 @@ def main(results):
                 results.maxMem,
             )
         elif useScala:
-            hydratedCMD = "rm *.jar 2> /dev/null;%s" % scriptContent
+            hydratedCMD = b"rm *.jar 2> /dev/null;%s" % scriptContent
             scalaCommandExec(
                 sClient,
-                base64.b64encode(hydratedCMD.encode("utf-8")),
+                results.jarURL,
+                base64.b64encode(hydratedCMD),
                 results.numWokers,
             )
         else:
@@ -216,6 +218,13 @@ if __name__ == "__main__":
         help="Name of the app as it will appear in the spark logs",
         default="ML exp",
         dest="appName",
+    )
+    group_general.add_argument(
+        "-C",
+        "--cluster-mode",
+        help="Deploy Jar file in cluster mode. Need a valid URI reachable from workers to get the /res/SimpleApp.jar to execute a command.",
+        default="client",
+        dest="jarURL",
     )
     group_general.add_argument(
         "-U",

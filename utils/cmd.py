@@ -74,23 +74,30 @@ def _runLocalCMD(cmd):
     return proc.returncode, stdout, stderr
 
 
-def scalaCommandExec(sClient, cmdFormatted, numWorkers):
+def scalaCommandExec(sClient, jarURL, cmdFormatted, numWorkers):
     if distutils.spawn.find_executable("java") is None:
         whine("Could not find java binary in current PATH", "err")
         sys.exit(-1)
 
-    sparkSubmit, sparkArgs = sClient.getAll()
-    jarArgs = " --class SimpleApp ./res/SimpleApp.jar %s %s" % (
+    deployMode, jarURI = (
+        ("client", "./res/SimpleApp.jar") if jarURL == "client" else ("cluster", jarURL)
+    )
+
+    sparkSubmit, sparkArgs = sClient.getAll(jarURI, deployMode)
+    jarArgs = " --class SimpleApp %s %s %s" % (
+        jarURI,
         cmdFormatted.decode("utf-8"),
         numWorkers,
     )
-
     cmdLine = "%s %s %s " % (sparkSubmit, sparkArgs, jarArgs)
+
     whine("Initializing local Spark driver...This can take a little while", "info")
     code, out, err = _runLocalCMD(cmdLine)
-    if code == 0:
+    if code == 0 and deployMode == "client":
         whine("Command output\n", "good")
         print(out.decode("utf-8"))
+    elif code == 0 and deployMode != "client":
+        whine("Application submitted in cluster mode", "good")
     else:
         whine("Error submitting JAR file or executing code", "err")
         print(err.decode("utf-8"))
