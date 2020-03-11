@@ -39,9 +39,7 @@ class SparkClient:
         else:
             conf = conf.setMaster("spark://%s:%d" % (self.target, self.port))
 
-        conf = conf.set(
-            "spark.driver.extraJavaOptions", "-Duser.name=%s" % self.username
-        )
+        conf = conf.set("spark.driver.extraJavaOptions", "-Duser.name=%s" % self.username)
         self.conf = conf
 
     def _setupYarn(self, conf):
@@ -108,6 +106,7 @@ class SparkClient:
         self._checkListeningPorts()
         self.sc = pyspark.SparkContext(conf=self.conf)
         self.sc.setLogLevel(self.logLevel)
+        whine("Running driver version: %s " % self.sc.version, "info")
 
     def isReady(self):
         if self.sc is None:
@@ -216,9 +215,7 @@ class SparkClient:
             jsonData = json.loads(rp.text)
             return jsonData
         except (requests.exceptions.Timeout, requests.exceptions.RequestException):
-            whine(
-                "No Rest API available at %s:%s" % (self.target, self.restPort), "warn"
-            )
+            whine("No Rest API available at %s:%s" % (self.target, self.restPort), "warn")
             return None
         except Exception as err:
             whine(
@@ -234,9 +231,7 @@ class SparkClient:
             jsonResp = json.loads(rp.text)
             return jsonResp
         except (requests.exceptions.Timeout, requests.exceptions.RequestException):
-            whine(
-                "No Rest API available at %s:%s" % (self.target, self.restPort), "warn"
-            )
+            whine("No Rest API available at %s:%s" % (self.target, self.restPort), "warn")
             return None
         except Exception as err:
             whine(
@@ -252,9 +247,7 @@ class SparkClient:
             doc = html.fromstring(rp.text)
             return doc
         except (requests.exceptions.Timeout, requests.exceptions.RequestException):
-            whine(
-                "No Web page available at %s:%s" % (self.target, self.httpPort), "warn"
-            )
+            whine("No Web page available at %s:%s" % (self.target, self.httpPort), "warn")
             return None
         except Exception as err:
             whine(

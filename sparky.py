@@ -63,8 +63,7 @@ def main(results):
         useRest = True
         if not results.cmd and not results.script:
             whine(
-                "Please provide a command (-c) or script (-s) to execute via REST",
-                "err",
+                "Please provide a command (-c) or script (-s) to execute via REST", "err",
             )
             sys.exit(-1)
 
@@ -101,12 +100,13 @@ def main(results):
             results.extension
         )
         interpreterArgs = ["/bin/bash", "-c", listCMD]
-        parseCommandOutput(sClient, interpreterArgs, results.numWokers)
+        parseCommandOutput(sClient, interpreterArgs, results.numWorkers)
 
     if results.passwdInFile:
+        whine("Searching for secrets on workers", "info")
         scriptContent = open("./utils/searchPass.py", "r").read()
         interpreterArgs = [pyBinary, "-c", scriptContent, results.extension]
-        parseCommandOutput(sClient, interpreterArgs, results.numWokers)
+        parseCommandOutput(sClient, interpreterArgs, results.numWorkers)
 
     if results.cmd:
         if useBlind:
@@ -130,11 +130,11 @@ def main(results):
                 sClient,
                 results.jarURL,
                 base64.b64encode(hydratedCMD.encode("utf-8")),
-                results.numWokers,
+                results.numWorkers,
             )
         else:
             interpreterArgs = [binPath, "-c", results.cmd]
-            parseCommandOutput(sClient, interpreterArgs, results.numWokers)
+            parseCommandOutput(sClient, interpreterArgs, results.numWorkers)
 
     if results.script:
         scriptContent = results.script.read().encode("utf-8")
@@ -156,26 +156,26 @@ def main(results):
                 sClient,
                 results.jarURL,
                 base64.b64encode(hydratedCMD),
-                results.numWokers,
+                results.numWorkers,
             )
         else:
             interpreterArgs = [binPath, "-c", scriptContent]
-            parseCommandOutput(sClient, interpreterArgs, results.numWokers)
+            parseCommandOutput(sClient, interpreterArgs, results.numWorkers)
 
     if results.metadata:
         scriptContent = open("./utils/cloud.py", "r").read()
         interpreterArgs = [pyBinary, "-c", scriptContent, "metadata"]
-        parseCommandOutput(sClient, interpreterArgs, results.numWokers)
+        parseCommandOutput(sClient, interpreterArgs, results.numWorkers)
 
     if results.userdata:
         scriptContent = open("./utils/cloud.py", "r").read()
         interpreterArgs = [pyBinary, "-c", scriptContent, "userdata"]
-        parseCommandOutput(sClient, interpreterArgs, results.numWokers)
+        parseCommandOutput(sClient, interpreterArgs, results.numWorkers)
 
     if results.privatekey:
         scriptContent = open("./utils/cloud.py", "r").read()
         interpreterArgs = [pyBinary, "-c", scriptContent, "privatekey"]
-        parseCommandOutput(sClient, interpreterArgs, results.numWokers)
+        parseCommandOutput(sClient, interpreterArgs, results.numWorkers)
 
 
 class MyParser(argparse.ArgumentParser):
@@ -360,9 +360,9 @@ if __name__ == "__main__":
         "-n",
         "--num-workers",
         type=int,
+        default="1",
         help="Number of workers to execute a command/search on. Default: 1",
-        default=1,
-        dest="numWokers",
+        dest="numWorkers",
     )
     group_cmd.add_argument(
         "-w",

@@ -113,7 +113,7 @@ Cloud environment (AWS, DigitalOcean):
 Sparky is a wrapper of the official Pyspark tool. Therefore you need a valid Java 8 environment as well. Sparky supports both Python 2.7 and Python 3.x.
 ```
 ayoul3@lab:~/$ git clone https://github.com/ayoul3/sparky && cd sparky
-ayoul3@lab:~sparky/$ pip install -r requirements --no-cahe-dir
+ayoul3@lab:~sparky/$ pip --no-cahe-dir install -r requirements.txt
 ayoul3@lab:~sparky/$ sudo apt install -y openjdk-8-jdk
 ayoul3@lab:~sparky/$ export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
 
