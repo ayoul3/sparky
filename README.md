@@ -10,10 +10,9 @@ Sparky is a tool to easily abuse and pentest a Spark server in Standalone mode. 
   * List of applications
 * Execute arbitrary code on Spark workers (through a normal task or through the REST API)
 * Explore temporary files and Jars used by other applications
-* Bruteforce Spark authentication
-* Bypass authentication on a Spark Standalone master (as of 2.4.4)
+* Bruteforce Spark authentication (fireSparky.py)
+* Bypass authentication on a Spark Standalone master (CVE-2020-9480)
 * Dump metadata and user data attached to workers in a Cloud environment
-
 
 
 ## Usage
@@ -110,7 +109,8 @@ Cloud environment (AWS, DigitalOcean):
 ```
 ## Prerequisites
 ### Installation
-Sparky is a wrapper of the official Pyspark tool. Therefore you need a valid Java 8 environment as well. Sparky supports both Python 2.7 and Python 3.x.
+Sparky is a wrapper of the official Pyspark tool. Therefore you need a valid Java 8 environment as well. Sparky supports both Python 2.7 and Python 3.x.  
+
 ```sh
 git clone https://github.com/ayoul3/sparky && cd sparky
 pip --no-cahe-dir install -r requirements.txt
@@ -119,6 +119,11 @@ export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
 
 python sparky.py <spark_ip> <computer_ip> -i
 ``` 
+*Make sure the version of your local pyspark version matches the spark version on the cluster*
+```sh
+python -m pip install pyspark==2.4.3
+``` 
+
 ### Python Environment
 The version of Python used to execute Sparky must match the default version of Python on the Worker node. Otherwise you will get the following exception:
 ```
@@ -129,7 +134,6 @@ Try running sparky with a python version 3.6 or adding the flag -P python2 or ex
 ### Network
 Sparky binds to two ports 8080 and 8443 that need to be reachable from the Workers executing the code. Otherwise the job will get stuck at the following line:
 ```
-
 [Stage 0:>                                            (0 + 0) / 10]
 ```
 

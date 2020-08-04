@@ -109,6 +109,7 @@ def confirmSpark(sClient):
         )
         return 0
 
+
 def checkRestPort(sClient):
     jsonData = sClient.sendRestHello()
     if jsonData is None:
@@ -123,9 +124,7 @@ def checkRestPort(sClient):
 def getTextFromNode(doc, xpathPattern, regex=None):
     raw_element = doc.xpath(xpathPattern)
     # print(raw_element)
-    raw_element = (
-        "".join("".join(raw_element).strip()) if len(raw_element) > 0 else None
-    )
+    raw_element = "".join("".join(raw_element).strip()) if len(raw_element) > 0 else None
     if regex is None or raw_element is None:
         return raw_element
     raw_match = re.findall(regex, "".join(raw_element))
@@ -142,10 +141,9 @@ def getNumber(input):
 
 
 def getListWorks(doc):
-    workerList = PrettyTable(
-        ["Executor IP", "Executor port", "State", "Cores", "Memory"]
-    )
-    raw_list = doc.xpath('//div[contains(@class, "aggregated-workers")]/table//tr')
+    workerList = PrettyTable(["Executor IP", "Executor port", "State", "Cores", "Memory"])
+    # raw_list = doc.xpath('//div[contains(@class, "aggregated-workers")]/table//tr')
+    raw_list = doc.xpath('//div[h4[contains(text(),"Workers")]]/table/tbody//tr')
     if len(raw_list) < 1:
         return workerList
     for raw_tr in raw_list:
@@ -209,8 +207,7 @@ def checkHTTPPort(sClient):
     listWorkers = getListWorks(doc)
     listApps = getListApps(doc)
     whine(
-        "Master Web page status available at %s:%s"
-        % (sClient.target, sClient.httpPort),
+        "Master Web page status available at %s:%s" % (sClient.target, sClient.httpPort),
         "good",
     )
     for key, value in clusterInfo.items():

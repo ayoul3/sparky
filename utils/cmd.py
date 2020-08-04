@@ -5,10 +5,6 @@ import distutils.spawn, time
 
 
 def parseCommandOutput(sClient, interpreterArgs, numWorkers):
-    # if numWorkers is None:
-    #    maxNodes = int(sClient.listNodes().size()) - 1
-    #    whine("Found a maximum of %d worker(s) that can be allocated" % maxNodes, "info")
-    #    numWorkers = min(numWorkers, maxNodes)
     whine("Executing command on %d worker(s)" % numWorkers, "info")
     listOutput = sClient.executeCMD(interpreterArgs, numWorkers)
     for i, out in enumerate(listOutput):
