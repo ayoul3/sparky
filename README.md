@@ -14,6 +14,8 @@ Sparky is a tool to easily abuse and pentest a Spark server in Standalone mode. 
 * Bypass authentication on a Spark Standalone master (CVE-2020-9480)
 * Dump metadata and user data attached to workers in a Cloud environment
 
+Works out of the box with Spark 2.4.x. You may need to install special version of pyspark if you're facing another version of the cluster. See Installation section below.
+
 
 ## Usage
 
