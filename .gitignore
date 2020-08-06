@@ -6,4 +6,8 @@
 !requirements.txt
 !tests
 !res
-!*.jar
+!res/*.jar
+!res/SimpleApp
+!res/SimpleApp/*.scala
+!res/SimpleApp/*.md
+!res/*.nse

